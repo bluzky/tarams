@@ -2,7 +2,7 @@
 
 Tarams provides a simple way for parsing request params with predefined schema
 
-~~~
+===
 
 - [Installation](#installation)
 - [Usage](#usage)
