@@ -46,7 +46,7 @@ defmodule Tarams.MixProject do
   defp deps do
     [
       {:ecto, "~> 3.0"},
-      {:ex_doc, "~> 0.22.1"}
+      {:ex_doc, "~> 0.22.1", only: [:dev]}
     ]
   end
 end
