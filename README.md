@@ -18,7 +18,7 @@ by adding `tarams` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:tarams, "~> 0.1.0"}
+    {:tarams, "~> 0.2.0"}
   ]
 end
 ```
