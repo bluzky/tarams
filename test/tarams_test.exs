@@ -34,6 +34,26 @@ defmodule TaramsTest do
     assert data.date == ~D[2020-10-21]
   end
 
+  test "test params with atom key should pass" do
+    schema = %{
+      keyword: :string,
+      page: :integer,
+      date: :date
+    }
+
+    params = %{
+      keyword: "hello",
+      page: "1",
+      date: "2020-10-21"
+    }
+
+    {rs, data} = Tarams.parse(schema, params)
+
+    assert rs == :ok
+    assert data.page == 1
+    assert data.date == ~D[2020-10-21]
+  end
+
   test "test required field not exist should fail" do
     schema = %{
       status: [type: :string, required: true]
@@ -117,6 +137,49 @@ defmodule TaramsTest do
     params = %{}
 
     {rs, _} = Tarams.parse(schema, params)
+    assert rs == :ok
+  end
+
+  test "test custom cast field function success should pass" do
+    schema = %{
+      page: [
+        type: {:array, :integer},
+        cast_func: fn v -> {:ok, String.split(v, ",") |> Enum.map(&String.to_integer(&1))} end
+      ]
+    }
+
+    params = %{page: "1,2,3"}
+
+    {rs, data} = Tarams.parse(schema, params)
+    assert rs == :ok
+    assert data.page == [1, 2, 3]
+  end
+
+  test "test custom cast field  function error should not pass" do
+    schema = %{
+      page: [
+        type: :integer,
+        cast_func: fn v -> {:error, "Not integer"} end
+      ]
+    }
+
+    params = %{page: "1,2,3"}
+
+    {rs, data} = Tarams.parse(schema, params)
+    assert rs == :error
+  end
+
+  test "test custom cast field function with no params value should pass" do
+    schema = %{
+      page: [
+        type: {:array, :integer},
+        cast_func: fn v -> {:ok, String.split(v, ",") |> Enum.map(&String.to_integer(&1))} end
+      ]
+    }
+
+    params = %{}
+
+    {rs, data} = Tarams.parse(schema, params)
     assert rs == :ok
   end
 end

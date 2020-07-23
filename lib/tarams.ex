@@ -60,6 +60,7 @@ defmodule Tarams do
   """
 
   import Ecto.Changeset
+  alias Ecto.Changeset
 
   @doc """
   Parse and validate input params with predefined schema
@@ -69,11 +70,19 @@ defmodule Tarams do
     default = get_default(schema)
     types = get_type(schema)
     validator = get_validator(schema)
-    required_field = get_required_fields(schema)
+    required_fields = get_required_fields(schema)
+
+    custom_cast_fields = get_custom_cast_fields(schema)
+
+    default_cast_fields =
+      types
+      |> Map.keys()
+      |> Enum.filter(&(&1 not in Map.keys(custom_cast_fields)))
 
     changeset =
-      cast({default, types}, params, Map.keys(types))
-      |> validate_required(required_field)
+      cast({default, types}, params, default_cast_fields)
+      |> cast_custom_fields(custom_cast_fields, params)
+      |> validate_required(required_fields)
 
     changeset =
       Enum.reduce(validator, changeset, fn {field, {val_type, val_opts}}, cs ->
@@ -171,5 +180,48 @@ defmodule Tarams do
         false
     end)
     |> Enum.map(&elem(&1, 0))
+  end
+
+  @doc """
+   list field with custom cast function
+  """
+  defp get_custom_cast_fields(schema) do
+    Enum.filter(schema, fn
+      {_, opts} when is_list(opts) ->
+        cast_func = Keyword.get(opts, :cast_func)
+
+        cond do
+          is_nil(cast_func) -> false
+          is_function(cast_func) -> true
+          true -> raise RuntimeError, ":cast_func must be a function"
+        end
+
+      _ ->
+        false
+    end)
+    |> Enum.into(%{})
+  end
+
+  @doc """
+  cast fields with custom cast function
+  """
+  def cast_custom_fields(%Changeset{} = changeset, custom_cast_fields, params) do
+    default_values = get_default(custom_cast_fields)
+
+    Enum.reduce(custom_cast_fields, changeset, fn {field, opts}, changeset ->
+      # params can be map with atom key or binary key
+      value = Map.get(params, field) || Map.get(params, "#{field}")
+
+      if is_nil(value) do
+        put_change(changeset, field, Map.get(default_values, field))
+      else
+        cast_func = Keyword.get(opts, :cast_func)
+
+        case cast_func.(value) do
+          {:ok, casted_value} -> put_change(changeset, field, casted_value)
+          {:error, message} -> add_error(changeset, field, message)
+        end
+      end
+    end)
   end
 end
