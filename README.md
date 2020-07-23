@@ -2,8 +2,6 @@
 
 Tarams provides a simple way for parsing request params with predefined schema
 
-
-
 - [Installation](#installation)
 - [Usage](#usage)
 - [Set default value](#default-value)
@@ -42,14 +40,16 @@ end
 ```
 
 ## Default value
-You can define default value for a field if it is  missing in params
+You can define a default value for a field if it's missing from the params.
+
 ```elixir
 schema = %{
     status: [type: :string, default: "pending"]
 }
 ```
 
-Or you can define default value as a function. This function is evaluated each time invoke `Tarams.parse`
+Or you can define a default value as a function. This function is evaluated when `Tarams.parse` gets invoked.
+
 ```elixir
 schema = %{
     date: [type: :utc_datetime, default: &Timex.now/0]
@@ -86,9 +86,9 @@ This is a demo parser function.
 
 ## Why Tarams
 
-I looked for a library for parsing phoenix request params, and I found [params](https://github.com/vic/params). It is an awesome library but it does not support params validation.
+I was looking for a library for parsing Phoenix request params, and found [params](https://github.com/vic/params). It's an awesome library but it doesn't support params validation.
 
-I clone the source code and try to make some change to support validation but macro world is soo complicated. Then I decide to write my own library that support parsing and validating parameter and without macro ( after I red the book Metaprogramming in Elixir). So you can read the source code ( it is quite simple) and modify it to fit your need.
+I cloned the source code, and tried to make some change to support validations, but macro world is soo complicated. I decide to write my own library that supports parsing and validating parameters without macros (after I read the book Metaprogramming in Elixir). You can read the source code (it's quite simple), and modify it to fit your needs.
 
 
 ## Contributors
