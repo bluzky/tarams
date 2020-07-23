@@ -39,7 +39,7 @@ defmodule Tarams do
   - `validate` define how a field is validated. You can use any validation which `Ecto.Changeset` supports. There is a simple rule to map schema declaration with `Ecto.Changeset` validation function.
   Simply concatenate `validate` and validation type to get `Ecto.Changeset` validation function.
 
-  ### Example
+  **Example**
   ```elixir
     %{status: [type: string, validate: {:inclusion, ["open", "pending"]}]}
 
@@ -49,7 +49,7 @@ defmodule Tarams do
 
   - `default`: set default value. It could be a value or a function, if is is a function, it will be evaluated each time `parse` function is called.
 
-  ### Example
+  **Example**
   ```elixir
     %{
       category: [type: :string, default: "elixir"],
@@ -57,6 +57,16 @@ defmodule Tarams do
     }
   ```
 
+  - `cast_func`: custom function to cast raw value to schema type. This is `cast_func` spec `fn(any) :: {:ok, any} | {:error, binary} `
+  By defaut, `parse` function uses `Ecto.Changeset` cast function for built-in types, with `cast_func` you can define your own cast function for your custom type.
+  **Example**
+  ```elixir
+  schema =
+    %{
+      status: [type: {:array, :string}, cast_func: fn value -> {:ok, String.split(",")} end]
+    }
+  Tarams.parse(schema, %{status: "processing,dropped"})
+  ```
   """
 
   import Ecto.Changeset

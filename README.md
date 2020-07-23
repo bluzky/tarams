@@ -6,6 +6,8 @@ Tarams provides a simple way for parsing request params with predefined schema
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Set default value](#default-value)
+- [Custom cast function](#custom-cast-function)
 - [API Documentation](https://hexdocs.pm/tarams/)
 
 ## Installation
@@ -38,6 +40,49 @@ def index(conn, params) do
     end
 end
 ```
+
+## Default value
+You can define default value for a field if it is  missing in params
+```elixir
+schema = %{
+    status: [type: :string, default: "pending"]
+}
+```
+
+Or you can define default value as a function. This function is evaluated each time invoke `Tarams.parse`
+```elixir
+schema = %{
+    date: [type: :utc_datetime, default: &Timex.now/0]
+}
+```
+
+## Custom cast function
+By default `Tarams` uses `Ecto.Changeset` to cast built-in types. If you don't want to use default casting functions, or you want define casting function for custom type, `tarams` provide `cast_func` option to define a custom cast function.
+This is `cast_func` spec `fn(any) :: {:ok, any} | {:error, binary}`
+
+If `cast_func` returns `{:ok, value}` this value is added to changeset
+If it returns `{:error, message}`, error message is added to changeset errors
+
+```elixir
+def my_array_parser(value) do
+    if is_binary(value) do
+        ids = 
+            String.split(value, ",")
+            |> Enum.map(&String.to_integer(&1))
+        
+        {:ok, ids}
+    else
+        {:error, "Invalid string"
+    end
+end
+
+schema = %{
+    user_id: [type: {:array, :integer}, cast_func: &my_array_parser/1]
+}
+
+Tarams.parse(schema, %{user_id: "1,2,3"})
+```
+This is a demo parser function.
 
 ## Why Tarams
 
