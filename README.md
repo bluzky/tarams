@@ -60,8 +60,8 @@ schema = %{
 By default `Tarams` uses `Ecto.Changeset` to cast built-in types. If you don't want to use default casting functions, or you want define casting function for custom type, `tarams` provide `cast_func` option to define a custom cast function.
 This is `cast_func` spec `fn(any) :: {:ok, any} | {:error, binary}`
 
-If `cast_func` returns `{:ok, value}` this value is added to changeset
-If it returns `{:error, message}`, error message is added to changeset errors
+If `cast_func` returns `{:ok, value}`, this value is added to changeset.
+If it returns `{:error, message}`, error message is added to changeset errors.
 
 ```elixir
 def my_array_parser(value) do
@@ -92,4 +92,4 @@ I cloned the source code, and tried to make some change to support validations, 
 
 
 ## Contributors
-If you find a bug or want to improve something, please send a pull-request. Thank you!
+If you find a bug or want to improve something, please send a pull request. Thank you!
