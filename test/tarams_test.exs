@@ -155,6 +155,22 @@ defmodule TaramsTest do
     assert data.page == [1, 2, 3]
   end
 
+  test "test custom cast field function with default and nil param should use default value" do
+    schema = %{
+      type: [
+        type: {:array, :string},
+        default: "hello",
+        cast_func: fn v -> {:ok, String.split(v, ",") |> List.first()} end
+      ]
+    }
+
+    params = %{}
+
+    {rs, data} = Tarams.parse(schema, params)
+    assert rs == :ok
+    assert data.type == "hello"
+  end
+
   test "test custom cast field  function error should not pass" do
     schema = %{
       page: [
