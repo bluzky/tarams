@@ -30,9 +30,7 @@ defmodule Tarams.SchemaParser do
     end)
   end
 
-  @doc """
-  Extract field type, support all ecto type
-  """
+  # Extract field type, support all ecto type
   defp get_types(schema) do
     types =
       Enum.map(schema, fn
@@ -47,9 +45,7 @@ defmodule Tarams.SchemaParser do
     Enum.into(types, %{})
   end
 
-  @doc """
-  Extract field default value, if default value is function, it is invoked
-  """
+  # Extract field default value, if default value is function, it is invoked
   defp get_default(schema) do
     default =
       Enum.map(schema, fn {field, opts} ->
@@ -68,9 +64,7 @@ defmodule Tarams.SchemaParser do
     Enum.into(default, %{})
   end
 
-  @doc """
-  Extract field and validator for each field
-  """
+  # Extract field and validator for each field
   defp get_validators(schema) do
     Enum.map(schema, fn {field, opts} ->
       {field, Keyword.get(opts, :validate)}
@@ -78,19 +72,15 @@ defmodule Tarams.SchemaParser do
     |> Enum.filter(&(not is_nil(elem(&1, 1))))
   end
 
-  @doc """
-  List required fields, field with option `required: true`, from schema
-  """
+  # List required fields, field with option `required: true`, from schema
   defp get_required_fields(schema) do
-    Enum.filter(schema, fn {k, opts} ->
+    Enum.filter(schema, fn {_, opts} ->
       Keyword.get(opts, :required) == true
     end)
     |> Enum.map(&elem(&1, 0))
   end
 
-  @doc """
-   list field with custom cast function
-  """
+  # list field with custom cast function
   defp get_custom_cast_funcs(schema) do
     Enum.filter(schema, fn {_, opts} ->
       cast_func = Keyword.get(opts, :cast_func)

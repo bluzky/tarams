@@ -116,30 +116,6 @@ defmodule TaramsTest do
     assert data.status == "open"
   end
 
-  test "test validate params with invalid value should fail" do
-    schema = %{
-      page: [type: :integer, validate: {:number, [greater_than: 0]}]
-    }
-
-    params = %{
-      "page" => "-1"
-    }
-
-    {rs, _} = Tarams.parse(schema, params)
-    assert rs == :error
-  end
-
-  test "test not existing field should pass validation" do
-    schema = %{
-      page: [type: :integer, validate: {:number, [greater_than: 0]}]
-    }
-
-    params = %{}
-
-    {rs, _} = Tarams.parse(schema, params)
-    assert rs == :ok
-  end
-
   test "test custom cast field function success should pass" do
     schema = %{
       page: [
