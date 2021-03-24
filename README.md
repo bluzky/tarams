@@ -8,6 +8,14 @@ Tarams provides a simple way for parsing request params with predefined schema
 - [Custom cast function](#custom-cast-function)
 - [API Documentation](https://hexdocs.pm/tarams/)
 
+
+## Why Tarams
+    - Reduce code boilerplate 
+    - Shorter schema definition
+    - Default function which generate value each casting time
+    - Custom validation functions
+    - Custom parse functions
+    
 ## Installation
 
 [Available in Hex](https://hex.pm/tarams), the package can be installed
@@ -16,7 +24,7 @@ by adding `tarams` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:tarams, "~> 0.2.0"}
+    {:tarams, "~> 0.4.0"}
   ]
 end
 ```
@@ -84,12 +92,44 @@ Tarams.parse(schema, %{user_id: "1,2,3"})
 ```
 This is a demo parser function.
 
-## Why Tarams
 
-I was looking for a library for parsing Phoenix request params, and found [params](https://github.com/vic/params). It's an awesome library but it doesn't support params validation.
+## Validation
 
-I cloned the source code, and tried to make some change to support validations, but macro world is soo complicated. I decide to write my own library that supports parsing and validating parameters without macros (after I read the book Metaprogramming in Elixir). You can read the source code (it's quite simple), and modify it to fit your needs.
+  - You can use any validation which `Ecto.Changeset` supports. There is a simple rule to map schema declaration with `Ecto.Changeset` validation function. Simply concatenate `validate` and validation type to get `Ecto.Changeset` validation function.
 
+  ```elixir
+  validate: {<validation_name>, <validation_option>}
+  ```
+
+  **Example**
+
+  ```elixir
+    %{status: [type: string, validate: {:inclusion, ["open", "pending"]}]}
+
+    # is translated to
+    Ecto.Changeset.validate_inclustion(changeset, :status, ["open", "pending"])
+  ```
+
+  - If your need many validate function, just pass a list to `:validate` option.
+  **Example**
+
+  ```elixir
+    %{status: [type: string, validate: [{validate1, otps1}, {validate2, opts2}]] }
+  ```
+
+  - You can pass a custom validation function too. Your function must follow this spec
+
+  `fn(Ecto.Changeset, atom, list) :: Ecto.Changeset `
+
+  **Example**
+
+  ```elixir
+    def custom_validate(changeset, field_name, opts) do
+        # your validation logic
+    end
+    %{status: [type: :string, validate: {&custom_validate/2, <your_options>}]}
+  ```
+  
 
 ## Contributors
 If you find a bug or want to improve something, please send a pull request. Thank you!
