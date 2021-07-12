@@ -4,13 +4,11 @@ defmodule NestedSchemaTest do
 
   describe "Nested schema" do
     @map_schema %{
-      item: [
-        type: %{
-          name: [type: :string, required: true],
-          sku: [type: :string, required: true],
-          photo: [type: :string]
-        }
-      ]
+      item: %{
+        name: [type: :string, required: true],
+        sku: [type: :string, required: true],
+        photo: [type: :string]
+      }
     }
     test "nested schema should success" do
       data1 = %{
