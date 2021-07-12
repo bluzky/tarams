@@ -1,5 +1,10 @@
 defmodule Tarams.Schema do
-  defstruct types: %{}, default: %{}, validators: %{}, required_fields: [], custom_cast_funcs: []
+  defstruct types: %{},
+            default: %{},
+            validators: %{},
+            required_fields: [],
+            custom_cast_funcs: [],
+            embedded_fields: []
 end
 
 defmodule Tarams.SchemaParser do
@@ -11,7 +16,8 @@ defmodule Tarams.SchemaParser do
       default: get_default(schema),
       validators: get_validators(schema),
       required_fields: get_required_fields(schema),
-      custom_cast_funcs: get_custom_cast_funcs(schema)
+      custom_cast_funcs: get_custom_cast_funcs(schema),
+      embedded_fields: get_embedded_fields(schema)
     }
   end
 
@@ -93,4 +99,18 @@ defmodule Tarams.SchemaParser do
     end)
     |> Enum.into(%{})
   end
+
+  defp get_embedded_fields(schema) do
+    Enum.filter(schema, fn {_, opts} ->
+      is_embedded_type(opts[:type])
+    end)
+    |> Enum.into(%{})
+  end
+
+  # embeded type is {:array , %{<schema>}} or %{<schema>}
+  defp is_embedded_type({:array, %{}}), do: true
+
+  defp is_embedded_type(%{}), do: true
+
+  defp is_embedded_type(_), do: false
 end
