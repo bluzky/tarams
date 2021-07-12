@@ -110,7 +110,7 @@ defmodule Tarams do
   ```
   """
 
-  import Ecto.Changeset
+  import Ecto.Changeset, except: [apply_changes: 1]
   alias Ecto.Changeset
 
   @doc """
@@ -137,19 +137,46 @@ defmodule Tarams do
       default: default,
       validators: validation_rules,
       required_fields: required_fields,
-      custom_cast_funcs: custom_cast_funcs
+      custom_cast_funcs: custom_cast_funcs,
+      embedded_fields: embedded_fields
     } = Tarams.SchemaParser.parse(schema)
 
     default_cast_fields =
       types
       |> Map.keys()
-      |> Enum.filter(&(&1 not in Map.keys(custom_cast_funcs)))
+      |> Kernel.--(Map.keys(custom_cast_funcs))
+      |> Kernel.--(Map.keys(embedded_fields))
 
     cast({default, types}, params, default_cast_fields)
     |> cast_custom_fields(custom_cast_funcs, params)
+    |> cast_embedded_fields(embedded_fields)
     |> validate_required(required_fields)
     |> Tarams.Validator.validate(validation_rules)
   end
+
+  def apply_changes(%Changeset{} = changeset) do
+    Enum.reduce(changeset.changes, changeset.data, fn {key, value}, acc ->
+      value =
+        case value do
+          %Ecto.Changeset{} ->
+            apply_changes(value)
+
+          value when is_list(value) ->
+            apply_changes(value)
+
+          _ ->
+            value
+        end
+
+      Map.put(acc, key, value || acc[key])
+    end)
+  end
+
+  def apply_changes(cs) when is_list(cs) do
+    Enum.map(cs, &apply_changes(&1))
+  end
+
+  def apply_changes(cs), do: cs
 
   defp cast_custom_fields(%Changeset{} = changeset, custom_cast_fields, params) do
     Enum.reduce(custom_cast_fields, changeset, fn {field, opts}, changeset ->
@@ -170,5 +197,59 @@ defmodule Tarams do
         end
       end
     end)
+  end
+
+  # cast nested schema
+  defp cast_embedded_fields(%Changeset{} = changeset, embedded_fields) do
+    Enum.reduce(embedded_fields, changeset, fn {field_name, opts}, acc ->
+      cast_embedded_field(acc, field_name, opts[:type])
+    end)
+  end
+
+  # cast many
+  defp cast_embedded_field(%Changeset{} = changeset, field, {:array, schema}) do
+    params = Map.get(changeset.params, field) || Map.get(changeset.params, "#{field}")
+
+    case params do
+      nil ->
+        put_embed_changes(changeset, field, nil)
+
+      params when is_list(params) ->
+        embedded_cs = Enum.map(params, &cast(schema, &1))
+        valid? = Enum.reduce(embedded_cs, true, fn cs, acc -> acc and cs.valid? end)
+
+        changeset
+        |> put_embed_changes(field, embedded_cs)
+        |> Map.put(:valid?, valid? and changeset.valid?)
+
+      _ ->
+        add_error(changeset, field, "is invalid")
+    end
+  end
+
+  # cast one 
+  defp cast_embedded_field(%Changeset{} = changeset, field, %{} = schema) do
+    params = Map.get(changeset.params, field) || Map.get(changeset.params, "#{field}")
+
+    case params do
+      nil ->
+        put_embed_changes(changeset, field, nil)
+
+      params when is_map(params) ->
+        embedded_cs = cast(schema, params)
+
+        changeset
+        |> put_embed_changes(field, embedded_cs)
+        |> Map.put(:valid?, embedded_cs.valid? and changeset.valid?)
+
+      _ ->
+        add_error(changeset, field, "is invalid")
+    end
+  end
+
+  defp put_embed_changes(changeset, field, changes) do
+    changes = Map.put(changeset.changes, field, changes)
+
+    %{changeset | changes: changes}
   end
 end
