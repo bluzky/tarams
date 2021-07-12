@@ -24,7 +24,7 @@ defmodule Tarams.SchemaParser do
   defp standardize(schema) do
     Enum.map(schema, fn {field_name, field_def} ->
       cond do
-        is_atom(field_def) or is_map(field_def) ->
+        is_atom(field_def) or is_map(field_def) or is_tuple(field_def) ->
           # map is nested schema
           {field_name, [type: field_def]}
 

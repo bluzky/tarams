@@ -85,13 +85,11 @@ defmodule NestedSchemaTest do
 
   describe "Nested list schema" do
     @list_schema %{
-      items: [
-        type:
-          {:array,
-           %{
-             sku: [type: :string, required: true]
-           }}
-      ]
+      items:
+        {:array,
+         %{
+           sku: [type: :string, required: true]
+         }}
     }
     test "Cast list schema should success" do
       data = %{
