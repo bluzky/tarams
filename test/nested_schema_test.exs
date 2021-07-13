@@ -28,7 +28,7 @@ defmodule NestedSchemaTest do
                  sku: "sku1",
                  photo: nil
                }
-             } = Tarams.apply_changes(changeset)
+             } = Ecto.Changeset.apply_changes(changeset)
     end
 
     test "nested schema invalid value should be invalid" do
@@ -51,17 +51,12 @@ defmodule NestedSchemaTest do
              } = changeset
     end
 
-    test "nested schema cast on nil should be nil" do
+    test "nested schema cast on nil should be casted" do
       data1 = %{}
 
       changeset = Tarams.cast(@map_schema, data1)
       assert changeset.valid?
-
-      assert %{
-               changes: %{
-                 item: nil
-               }
-             } = changeset
+      assert :item not in changeset.changes
     end
 
     test "nested schema cast on nil with required should be invalid" do
@@ -101,7 +96,7 @@ defmodule NestedSchemaTest do
 
       assert %{
                items: [%{sku: "1"}, %{sku: "2"}]
-             } = Tarams.apply_changes(cs)
+             } = Ecto.Changeset.apply_changes(cs)
     end
 
     test "Cast list schema bad value should invalid" do
@@ -117,13 +112,13 @@ defmodule NestedSchemaTest do
                cs.changes.items
     end
 
-    test "cast list nil should return nil" do
+    test "cast list nil should not cast" do
       data = %{}
 
       cs = Tarams.cast(@list_schema, data)
 
       assert cs.valid?
-      assert cs.changes.items == nil
+      assert :items not in cs.changes
     end
 
     test "cast list with default" do
@@ -143,7 +138,7 @@ defmodule NestedSchemaTest do
       cs = Tarams.cast(list_schema, data)
 
       assert cs.valid?
-      assert %{items: [%{sku: "1"}]} = Tarams.apply_changes(cs)
+      assert %{items: [%{sku: "1"}]} = Ecto.Changeset.apply_changes(cs)
     end
   end
 end
