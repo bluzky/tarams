@@ -43,7 +43,7 @@ defmodule Tarams.SchemaParser do
       Enum.map(schema, fn
         {field, opts} when is_list(opts) ->
           if Keyword.has_key?(opts, :type) do
-            {field, Keyword.get(opts, :type)}
+            {field, construct_type(field, opts[:type])}
           else
             raise "Type is missing"
           end
@@ -51,6 +51,30 @@ defmodule Tarams.SchemaParser do
 
     Enum.into(types, %{})
   end
+
+  defp construct_type(field, {:array, %{} = _schema}) do
+    {:embed,
+     %Ecto.Embedded{
+       cardinality: :many,
+       field: field,
+       owner: nil,
+       related: nil,
+       unique: true
+     }}
+  end
+
+  defp construct_type(field, %{} = _schema) do
+    {:embed,
+     %Ecto.Embedded{
+       cardinality: :one,
+       field: field,
+       owner: nil,
+       related: nil,
+       unique: true
+     }}
+  end
+
+  defp construct_type(_field, type), do: type
 
   # Extract field default value, if default value is function, it is invoked
   defp get_default(schema) do

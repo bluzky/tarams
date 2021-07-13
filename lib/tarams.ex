@@ -110,7 +110,7 @@ defmodule Tarams do
   ```
   """
 
-  import Ecto.Changeset, except: [apply_changes: 1]
+  import Ecto.Changeset
   alias Ecto.Changeset
 
   @doc """
@@ -154,30 +154,6 @@ defmodule Tarams do
     |> Tarams.Validator.validate(validation_rules)
   end
 
-  def apply_changes(%Changeset{} = changeset) do
-    Enum.reduce(changeset.changes, changeset.data, fn {key, value}, acc ->
-      value =
-        case value do
-          %Ecto.Changeset{} ->
-            apply_changes(value)
-
-          value when is_list(value) ->
-            apply_changes(value)
-
-          _ ->
-            value
-        end
-
-      Map.put(acc, key, value || acc[key])
-    end)
-  end
-
-  def apply_changes(cs) when is_list(cs) do
-    Enum.map(cs, &apply_changes(&1))
-  end
-
-  def apply_changes(cs), do: cs
-
   defp cast_custom_fields(%Changeset{} = changeset, custom_cast_fields, params) do
     Enum.reduce(custom_cast_fields, changeset, fn {field, opts}, changeset ->
       # params can be map with atom key or binary key
@@ -212,7 +188,7 @@ defmodule Tarams do
 
     case params do
       nil ->
-        put_embed_changes(changeset, field, nil)
+        changeset
 
       params when is_list(params) ->
         embedded_cs = Enum.map(params, &cast(schema, &1))
@@ -233,7 +209,7 @@ defmodule Tarams do
 
     case params do
       nil ->
-        put_embed_changes(changeset, field, nil)
+        changeset
 
       params when is_map(params) ->
         embedded_cs = cast(schema, params)
