@@ -5,6 +5,8 @@ Phoenix request params validation library.
 [![Build Status](https://github.com/bluzky/tarams/workflows/Elixir%20CI/badge.svg)](https://github.com/bluzky/tarams/actions) [![Coverage Status](https://coveralls.io/repos/github/bluzky/tarams/badge.svg?branch=main)](https://coveralls.io/github/bluzky/tarams?branch=main) [![Hex Version](https://img.shields.io/hexpm/v/tarams.svg)](https://hex.pm/packages/tarams) [![docs](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/tarams/)
 
 
+**Warning: Tarams v1.0.0 APIs is not back compatible**
+
 
 - [Why Tarams](#why-tarams)
 - [Installation](#installation)
