@@ -118,7 +118,7 @@ schema = %{
     user_id: [type: {:array, :integer}, cast_func: &my_array_parser/1]
 }
 
-Tarams.cast(schema, %{user_id: "1,2,3"})
+Tarams.cast(%{user_id: "1,2,3"}, schema)
 ```
 This is a demo parser function.
 
