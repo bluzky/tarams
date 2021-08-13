@@ -1,12 +1,22 @@
 # Tarams
 
-Tarams provides a simple way for parsing request params with predefined schema
+Phoenix request params validation library.
 
+[![Build Status](https://github.com/bluzky/tarams/workflows/Elixir%20CI/badge.svg)](https://github.com/bluzky/tarams/actions) [![Coverage Status](https://coveralls.io/repos/github/bluzky/tarams/badge.svg?branch=main)](https://coveralls.io/github/bluzky/tarams?branch=main) [![Hex Version](https://img.shields.io/hexpm/v/tarams.svg)](https://hex.pm/packages/tarams) [![docs](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/tarams/)
+
+
+
+- [Why Tarams](#why-tarams)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Set default value](#default-value)
-- [Custom cast function](#custom-cast-function)
-- [API Documentation](https://hexdocs.pm/tarams/)
+- [Define schema](#define-schema)
+    - [Default value](#default-value)
+    - [Custom cast function](#custom-cast-function)
+    - [Nested schema](#nested-schema)
+- [Validation](#validation)
+- [Contributors](#contributors)
+
+
 
 
 ## Why Tarams
@@ -24,7 +34,7 @@ by adding `tarams` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:tarams, "~> 0.4.0"}
+    {:tarams, "~> 1.0.0"}
   ]
 end
 ```
@@ -34,20 +44,39 @@ end
 ```elixir
 @index_params_schema  %{
     keyword: :string,
-    status: [type: string, required: true],
-    group_id: [type: :integer, validate: {:number, [greater_than: 0]}]
+    status: [type: :string, required: true],
+    group_id: [type: :integer, numer: [greater_than: 0]]
   }
 
 def index(conn, params) do
-    with {:ok, better_params} <- Tarams.parse(@index_params_schema, params) do
+    with {:ok, better_params} <- Tarams.cast(params, @index_params_schema) do
         # do anything with your params
     else
-        {:error, changset} -> # return params error
+        {:error, errors} -> # return params error
     end
 end
 ```
 
-## Default value
+
+## Define schema
+
+Schema is just a map and it can be nested. Each field is defined as
+
+`<field_name>: [<field_spec>, ...]`
+
+Or short form
+
+`<field_name>: <type>`
+
+Field specs is a keyword list thay may include:
+
+- `type` is required, `Tarams` support same data type as `Ecto`. I borrowed code from Ecto
+- `default`: default value or default function
+- `cast_func`: custom cast function
+- `number, format, length, in, not_in, func, required` are available validations
+
+
+### Default value
 You can define a default value for a field if it's missing from the params.
 
 ```elixir
@@ -56,7 +85,7 @@ schema = %{
 }
 ```
 
-Or you can define a default value as a function. This function is evaluated when `Tarams.parse` gets invoked.
+Or you can define a default value as a function. This function is evaluated when `Tarams.cast` gets invoked.
 
 ```elixir
 schema = %{
@@ -64,12 +93,13 @@ schema = %{
 }
 ```
 
-## Custom cast function
-By default `Tarams` uses `Ecto.Changeset` to cast built-in types. If you don't want to use default casting functions, or you want define casting function for custom type, `tarams` provide `cast_func` option to define a custom cast function.
-This is `cast_func` spec `fn(any) :: {:ok, any} | {:error, binary}`
+### Custom cast function
+You can define your own casting function, `tarams` provide `cast_func` option.
+Your `cast_func` must follows this spec 
 
-If `cast_func` returns `{:ok, value}`, this value is added to changeset.
-If it returns `{:error, message}`, error message is added to changeset errors.
+```elixir
+fn(any) :: {:ok, any} | {:error, binary} | :error
+```
 
 ```elixir
 def my_array_parser(value) do
@@ -88,46 +118,60 @@ schema = %{
     user_id: [type: {:array, :integer}, cast_func: &my_array_parser/1]
 }
 
-Tarams.parse(schema, %{user_id: "1,2,3"})
+Tarams.cast(schema, %{user_id: "1,2,3"})
 ```
 This is a demo parser function.
+
+### Nested schema
+With `Tarams` you can parse and validate nested map and list easily
+
+```elixir
+@my_schema %{
+    status: :string,
+    pagination: %{
+        page: [type: :integer, number: [min: 1]],
+        size: [type: :integer, number: [min: 10, max: 100"]]
+    }
+}
+```
+
+Or nested list schema
+
+```elixir
+@user_schema %{
+    name: :string,
+    email: [type: :string, required: true]
+    addresses: [type: {:array, %{
+        street: :string,
+        district: :string,
+        city: :string
+    }}]
+}
+```
 
 
 ## Validation
 
-  - You can use any validation which `Ecto.Changeset` supports. There is a simple rule to map schema declaration with `Ecto.Changeset` validation function. Simply concatenate `validate` and validation type to get `Ecto.Changeset` validation function.
+`Tarams` uses `Valdi` validation library. You can read more about [Valdi here]()
+Basically it supports following validation
+
+- validate inclusion/exclusion
+- validate length for string and enumerable types
+- validate number
+- validate string format/pattern
+- validate custom function
+- validate required(not nil) or not
+
+
 
   ```elixir
-  validate: {<validation_name>, <validation_option>}
-  ```
-
-  **Example**
-
-  ```elixir
-    %{status: [type: string, validate: {:inclusion, ["open", "pending"]}]}
-
-    # is translated to
-    Ecto.Changeset.validate_inclustion(changeset, :status, ["open", "pending"])
-  ```
-
-  - If your need many validate function, just pass a list to `:validate` option.
-  **Example**
-
-  ```elixir
-    %{status: [type: string, validate: [{validate1, otps1}, {validate2, opts2}]] }
-  ```
-
-  - You can pass a custom validation function too. Your function must follow this spec
-
-  `fn(Ecto.Changeset, atom, list) :: Ecto.Changeset `
-
-  **Example**
-
-  ```elixir
-    def custom_validate(changeset, field_name, opts) do
-        # your validation logic
-    end
-    %{status: [type: :string, validate: {&custom_validate/2, <your_options>}]}
+  product_schema = %{
+    sku: [type: :string, required: true, length: [min: 6, max: 20]]
+    name: [type: :string, required: true],
+    quantity: [type: :integer, number: [min: 0]],
+    type: [type: :string, in: ~w(physical digital)],
+    expiration_date: [type: :naive_datetime, func: &my_validation_func/1]
+  }
   ```
   
 

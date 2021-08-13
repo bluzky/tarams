@@ -1,231 +1,263 @@
 defmodule Tarams do
   @moduledoc """
-  `Tarams` provide a simpler way to define and validate data with power of `Ecto.Changeset` and schemaless. And `Tarams` is even more powerful with:
-  - default function which generate value each casting time
-  - custom validation functions
-  - custom parse functions
-  - shorter schema definition
+  Params provide some helpers method to work with parameters
+  """
 
-  **Basic usage**
-  ```elixir
-    @index_params_schema  %{
-      keyword: :string,
-      status: [type: string, required: true],
-      group_id: [type: :integer, validate: {:number, [greater_than: 0]}]
-    }
+  @doc """
+  A plug which do srubbing params
 
-    def index(conn, params) do
-      with {:ok, better_params} <- Tarams.parse(@index_params_schema, params) do
-        # do anything with your params
-      else
-        {:error, changset} -> # return params error
+  **Use in Router**
+
+      defmodule MyApp.Router do
+        ...
+        plug Tarams.plug_srub
+        ...
       end
-    end
 
-  ```
+  **Use in controller**
 
-  A Schema is a simple map of `field: options`
+      plug Tarams.plug_srub when action in [:index, :show]
+      # or specify which field to scrub
+      plug Tarams.plug_srub, ["id", "keyword"] when action in [:index, :show]
 
-  ### Sample schema
-  ```elixir
-    schema1 = %{
-      keyword: :string
-      status: [type: :string, required: true, validate: {:inclusion, ["open", "processing", "completed"]}],
-      page: [type: :integer, default: 1],
-      start_date: [type: :date, default: &Timex.today/0]
-    }
-  ```
-
-
-
-  ### Field options
-
-  - If there is no options, a field can be written in short form `<field_name>: <type>`.
-
-  - `required` is false by default, this field is used to check if a field is required or not
-
-  - `validate` define how a field is validated, read section **Validation** for more details.
-
-  - `default` set default value. It could be a value or a function, if is is a function, it will be evaluated each time `parse` or `cast` function is called.
-
-  **Example**
-
-  ```elixir
-    %{
-      category: [type: :string, default: "elixir"],
-      end_date: [type: :date, default: &Timex.today/1]
-    }
-  ```
-
-  - `cast_func`: custom function to cast raw value to schema type. This is `cast_func` spec `fn(any) :: {:ok, any} | {:error, binary} `
-  By defaut, `parse` function uses `Ecto.Changeset` cast function for built-in types, with `cast_func` you can define your own cast function for your custom type.
-
-    **Example**
-
-    ```elixir
-    schema =
-      %{
-        status: [type: {:array, :string}, cast_func: fn value -> {:ok, String.split(",")} end]
-      }
-    Tarams.parse(schema, %{status: "processing,dropped"})
-    ```
-
-
-
-  ### Validation
-
-  - You can use any validation which `Ecto.Changeset` supports. There is a simple rule to map schema declaration with `Ecto.Changeset` validation function. Simply concatenate `validate` and validation type to get `Ecto.Changeset` validation function.
-
-  ```elixir
-  validate: {<validation_name>, <validation_option>}
-  ```
-
-  **Example**
-
-  ```elixir
-    %{status: [type: string, validate: {:inclusion, ["open", "pending"]}]}
-
-    # is translated to
-    Ecto.Changeset.validate_inclustion(changeset, :status, ["open", "pending"])
-  ```
-
-  - If your need many validate function, just pass a list to `:validate` option.
-  **Example**
-
-  ```elixir
-    %{status: [type: string, validate: [{validate1, otps1}, {validate2, opts2}]] }
-  ```
-
-  - You can pass a custom validation function too. Your function must follow this spec
-
-  `fn(Ecto.Changeset, atom, list) :: Ecto.Changeset `
-
-  **Example**
-
-  ```elixir
-    def custom_validate(changeset, field_name, opts) do
-        # your validation logic
-    end
-    %{status: [type: :string, validate: {&custom_validate/2, <your_options>}]}
-  ```
   """
-
-  import Ecto.Changeset
-  alias Ecto.Changeset
-
-  @doc """
-  Cast params to a changeset and then check if `changeset.valid? = true` then invoke `Changeset.apply_changes` and return `{:ok, data}`. Otherwise, return `{:error, changeset}`
-  """
-  @spec parse(map, map) :: {:ok, map} | {:error, Ecto.Changeset.t()}
-  def parse(schema, params) do
-    case cast(schema, params) do
-      %{valid?: true} = changeset ->
-        {:ok, apply_changes(changeset)}
-
-      changeset ->
-        {:error, changeset}
-    end
-  end
-
-  @doc """
-  Build an Ecto schemaless schema and then do casting and validating params
-  """
-  @spec cast(map, map) :: Ecto.Changeset
-  def cast(schema, params) do
-    %{
-      types: types,
-      default: default,
-      validators: validation_rules,
-      required_fields: required_fields,
-      custom_cast_funcs: custom_cast_funcs,
-      embedded_fields: embedded_fields
-    } = Tarams.SchemaParser.parse(schema)
-
-    default_cast_fields =
-      types
-      |> Map.keys()
-      |> Kernel.--(Map.keys(custom_cast_funcs))
-      |> Kernel.--(Map.keys(embedded_fields))
-
-    cast({default, types}, params, default_cast_fields)
-    |> cast_custom_fields(custom_cast_funcs, params)
-    |> cast_embedded_fields(embedded_fields)
-    |> validate_required(required_fields)
-    |> Tarams.Validator.validate(validation_rules)
-  end
-
-  defp cast_custom_fields(%Changeset{} = changeset, custom_cast_fields, params) do
-    Enum.reduce(custom_cast_fields, changeset, fn {field, opts}, changeset ->
-      # params can be map with atom key or binary key
-      value = Map.get(params, field) || Map.get(params, "#{field}")
-
-      if is_nil(value) do
-        changeset
+  def plug_srub(conn, keys \\ []) do
+    params =
+      if keys == [] do
+        scrub_param(conn.params)
       else
-        cast_func = Keyword.get(opts, :cast_func)
+        Enum.reduce(keys, conn.params, fn key, params ->
+          case Map.fetch(conn.params, key) do
+            {:ok, value} -> Map.put(params, key, scrub_param(value))
+            :error -> params
+          end
+        end)
+      end
 
-        case cast_func.(value) do
-          {:ok, casted_value} ->
-            put_change(changeset, field, casted_value)
+    %{conn | params: params}
+  end
 
-          {:error, message} ->
-            add_error(changeset, field, message)
+  @doc """
+  Convert all parameter which value is empty string or string with all whitespace to nil. It works with nested map and list too.
+
+  **Example**
+
+      params = %{"keyword" => "   ", "email" => "", "type" => "customer"}
+      Tarams.scrub_param(params)
+      # => %{"keyword" => nil, "email" => nil, "type" => "customer"}
+
+      params = %{user_ids: [1, 2, "", "  "]}
+      Tarams.scrub_param(params)
+      # => %{user_ids: [1, 2, nil, nil]}
+  """
+  def scrub_param(%{__struct__: mod} = struct) when is_atom(mod) do
+    struct
+  end
+
+  def scrub_param(%{} = param) do
+    Enum.reduce(param, %{}, fn {k, v}, acc ->
+      Map.put(acc, k, scrub_param(v))
+    end)
+  end
+
+  def scrub_param(param) when is_list(param) do
+    Enum.map(param, &scrub_param/1)
+  end
+
+  def scrub_param(param) do
+    if scrub?(param), do: nil, else: param
+  end
+
+  defp scrub?(" " <> rest), do: scrub?(rest)
+  defp scrub?(""), do: true
+  defp scrub?(_), do: false
+
+  @doc """
+  Clean all nil field from params, support nested map and list.
+
+  **Example**
+
+      params = %{"keyword" => nil, "email" => nil, "type" => "customer"}
+      Tarams.clean_nil(params)
+      # => %{"type" => "customer"}
+
+      params = %{user_ids: [1, 2, nil]}
+      Tarams.clean_nil(params)
+      # => %{user_ids: [1, 2]}
+  """
+  @spec clean_nil(any) :: any
+  def clean_nil(%{__struct__: mod} = param) when is_atom(mod) do
+    param
+  end
+
+  def clean_nil(%{} = param) do
+    Enum.reduce(param, %{}, fn {k, v}, acc ->
+      if is_nil(v) do
+        acc
+      else
+        Map.put(acc, k, clean_nil(v))
+      end
+    end)
+  end
+
+  def clean_nil(param) when is_list(param) do
+    Enum.reduce(param, [], fn item, acc ->
+      if is_nil(item) do
+        acc
+      else
+        [clean_nil(item) | acc]
+      end
+    end)
+    |> Enum.reverse()
+  end
+
+  def clean_nil(param), do: param
+
+  alias Tarams.Type
+
+  @doc """
+  Cast and validate params with given schema.
+  See `Tarams.Schema` for instruction on how to define a schema
+  And then use it like this
+
+  ```elixir
+  def index(conn, params) do
+    index_schema = %{
+      status: [type: :string, required: true],
+      type: [type: :string, in: ["type1", "type2", "type3"]],
+      keyword: [type: :string, length: [min: 3, max: 100]],
+    }
+
+    with {:ok, data} <- Tarams.cast(params, index_schema) do
+      # do query data
+    else
+      {:error, errors} -> IO.puts(errors)
+    end
+  end
+  ```
+  """
+
+  @spec cast(data :: map(), schema :: map()) :: {:ok, map()} | {:error, errors :: map()}
+  def cast(data, schema) do
+    {status, results} =
+      schema
+      |> Tarams.Schema.expand()
+      |> Enum.map(&cast_field(data, &1))
+      |> collect_schema_result()
+
+    {status, Map.new(results)}
+  end
+
+  defp cast_field(data, {field_name, definitions}) do
+    {type, definitions} = Keyword.pop(definitions, :type)
+    {default, definitions} = Keyword.pop(definitions, :default)
+    {cast_func, validations} = Keyword.pop(definitions, :cast_func)
+
+    value =
+      case Map.fetch(data, field_name) do
+        {:ok, value} -> value
+        _ -> Map.get(data, "#{field_name}", default)
+      end
+
+    cast_func =
+      if is_function(cast_func) do
+        cast_func
+      else
+        &cast_value(&1, type)
+      end
+
+    case cast_func.(value) do
+      :error ->
+        {:error, {field_name, ["is in valid"]}}
+
+      {:error, errors} ->
+        {:error, {field_name, errors}}
+
+      {:ok, data} ->
+        validations
+        |> Enum.map(fn validation ->
+          do_validate(data, validation)
+        end)
+        |> collect_validation_result()
+        |> case do
+          :ok -> {:ok, {field_name, data}}
+          {_, errors} -> {:error, {field_name, errors}}
         end
-      end
-    end)
-  end
-
-  # cast nested schema
-  defp cast_embedded_fields(%Changeset{} = changeset, embedded_fields) do
-    Enum.reduce(embedded_fields, changeset, fn {field_name, opts}, acc ->
-      cast_embedded_field(acc, field_name, opts[:type])
-    end)
-  end
-
-  # cast many
-  defp cast_embedded_field(%Changeset{} = changeset, field, {:array, schema}) do
-    params = Map.get(changeset.params, field) || Map.get(changeset.params, "#{field}")
-
-    case params do
-      nil ->
-        changeset
-
-      params when is_list(params) ->
-        embedded_cs = Enum.map(params, &cast(schema, &1))
-        valid? = Enum.reduce(embedded_cs, true, fn cs, acc -> acc and cs.valid? end)
-
-        changeset
-        |> put_embed_changes(field, embedded_cs)
-        |> Map.put(:valid?, valid? and changeset.valid?)
-
-      _ ->
-        add_error(changeset, field, "is invalid")
     end
   end
 
-  # cast one 
-  defp cast_embedded_field(%Changeset{} = changeset, field, %{} = schema) do
-    params = Map.get(changeset.params, field) || Map.get(changeset.params, "#{field}")
+  defp cast_value(nil, _), do: {:ok, nil}
 
-    case params do
-      nil ->
-        changeset
+  # cast array of custom map
+  defp cast_value(value, {:array, %{} = type}) do
+    cast_array({:embed, __MODULE__, type}, value)
+  end
 
-      params when is_map(params) ->
-        embedded_cs = cast(schema, params)
+  # cast nested map
+  defp cast_value(value, %{} = type) do
+    Type.cast({:embed, __MODULE__, type}, value)
+  end
 
-        changeset
-        |> put_embed_changes(field, embedded_cs)
-        |> Map.put(:valid?, embedded_cs.valid? and changeset.valid?)
+  defp cast_value(value, type) do
+    Type.cast(type, value)
+  end
 
-      _ ->
-        add_error(changeset, field, "is invalid")
+  # rewrite cast_array for more detail errors
+  def cast_array(type, value, acc \\ [])
+
+  def cast_array(type, [value | t], acc) do
+    case Type.cast(type, value) do
+      {:ok, data} -> cast_array(type, t, [data | acc])
+      error -> error
     end
   end
 
-  defp put_embed_changes(changeset, field, changes) do
-    changes = Map.put(changeset.changes, field, changes)
+  def cast_array(_, [], acc), do: {:ok, Enum.reverse(acc)}
 
-    %{changeset | changes: changes}
+  defp do_validate(value, {:required, _} = validator) do
+    Valdi.validate(value, [validator])
+  end
+
+  defp do_validate(nil, _), do: :ok
+
+  defp do_validate(value, validator) do
+    Valdi.validate(value, [validator])
+  end
+
+  defp collect_validation_result(results) do
+    summary =
+      Enum.reduce(results, :ok, fn
+        :ok, acc -> acc
+        {:error, msg}, :ok -> {:error, [msg]}
+        {:error, msg}, {:error, acc_msg} -> {:error, [msg | acc_msg]}
+      end)
+
+    case summary do
+      :ok ->
+        :ok
+
+      {:error, errors} ->
+        errors =
+          errors
+          |> Enum.map(fn item ->
+            if is_list(item) do
+              item
+            else
+              [item]
+            end
+          end)
+          |> Enum.concat()
+
+        {:error, errors}
+    end
+  end
+
+  defp collect_schema_result(results) do
+    Enum.reduce(results, {:ok, []}, fn
+      {:ok, data}, {:ok, acc} -> {:ok, [data | acc]}
+      {:error, error}, {:ok, _} -> {:error, [error]}
+      {:error, error}, {:error, acc} -> {:error, [error | acc]}
+      _, acc -> acc
+    end)
   end
 end

@@ -4,10 +4,17 @@ defmodule Tarams.MixProject do
   def project do
     [
       app: :tarams,
-      version: "0.4.0",
+      version: "1.0.0",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test
+      ],
       package: package(),
       name: "Tarams",
       description: description(),
@@ -32,7 +39,7 @@ defmodule Tarams.MixProject do
   end
 
   defp description() do
-    "Simplest library to parse and validate parameters in elixir "
+    "Phoenix request params validation library"
   end
 
   defp docs do
@@ -45,8 +52,9 @@ defmodule Tarams.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto, "~> 3.0", optional: true},
-      {:ex_doc, "~> 0.22.1", only: [:dev]}
+      {:valdi, "~> 0.2.0"},
+      {:ex_doc, "~> 0.22.1", only: [:dev]},
+      {:excoveralls, "~> 0.14", only: :test}
     ]
   end
 end
