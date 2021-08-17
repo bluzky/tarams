@@ -68,8 +68,8 @@ defmodule ParamTest do
 
     test "scrub plug" do
       params = %{email: "   ", password: "123"}
-      assert %{params: %{email: nil, password: "123"}} = Tarams.plug_srub(%{params: params})
-      assert %{params: %{email: nil}} = Tarams.plug_srub(%{params: params}, [:email, :name])
+      assert %{params: %{email: nil, password: "123"}} = Tarams.plug_scrub(%{params: params})
+      assert %{params: %{email: nil}} = Tarams.plug_scrub(%{params: params}, [:email, :name])
     end
   end
 
@@ -225,6 +225,13 @@ defmodule ParamTest do
           assert {:error, _} = rs
         end
       end)
+    end
+
+    test "schema short hand" do
+      assert {:ok, %{number: 10}} = Tarams.cast(%{number: "10"}, %{number: :integer})
+
+      assert {:ok, %{number: 10}} =
+               Tarams.cast(%{number: "10"}, %{number: [:integer, number: [min: 5]]})
     end
 
     test "cast ok" do

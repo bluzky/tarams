@@ -10,18 +10,18 @@ defmodule Tarams do
 
       defmodule MyApp.Router do
         ...
-        plug Tarams.plug_srub
+        plug :plug_scrub
         ...
       end
 
   **Use in controller**
 
-      plug Tarams.plug_srub when action in [:index, :show]
+      plug :plug_srub when action in [:index, :show]
       # or specify which field to scrub
-      plug Tarams.plug_srub, ["id", "keyword"] when action in [:index, :show]
+      plug :plug_srub, ["id", "keyword"] when action in [:index, :show]
 
   """
-  def plug_srub(conn, keys \\ []) do
+  def plug_scrub(conn, keys \\ []) do
     params =
       if keys == [] do
         scrub_param(conn.params)
