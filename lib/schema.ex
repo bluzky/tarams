@@ -70,6 +70,19 @@ defmodule Tarams.Schema do
   }
   ```
 
+  **Alias**
+  Alias allow set a new key for value when using with `Taram.cast`
+
+  ```elixir
+  schema = %{
+    email: [type: :string, as: :user_email]
+  }
+
+  Tarams.cast(%{email: "xx@yy.com"}, schema)
+  #> {:ok, %{user_email: "xx@yy.com"}}
+  ```
+
+
   ## II. Field casting and default value
 
   These specifications is used for casting data with `Tarams.Params.cast`

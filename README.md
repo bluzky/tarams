@@ -76,6 +76,7 @@ Field specs is a keyword list thay may include:
 - `default`: default value or default function
 - `cast_func`: custom cast function
 - `number, format, length, in, not_in, func, required` are available validations
+- `as`: alias key you will receive from `Tarams.cast` if casting is succeeded
 
 
 ### Default value

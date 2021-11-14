@@ -238,6 +238,15 @@ defmodule ParamTest do
       end
     end
 
+    test "cast with alias" do
+      schema = %{
+        email: [type: :string, as: :user_email]
+      }
+
+      rs = Tarams.cast(%{email: "xx@yy.com"}, schema)
+      assert {:ok, %{user_email: "xx@yy.com"}} = rs
+    end
+
     test "cast use default value if field not exist in params" do
       assert {:ok, %{name: "Dzung"}} =
                Tarams.cast(%{}, %{name: [type: :string, default: "Dzung"]})

@@ -151,6 +151,7 @@ defmodule Tarams do
   defp cast_field(data, {field_name, definitions}) do
     {type, definitions} = Keyword.pop(definitions, :type)
     {default, definitions} = Keyword.pop(definitions, :default)
+    {alias, definitions} = Keyword.pop(definitions, :as, field_name)
     {cast_func, validations} = Keyword.pop(definitions, :cast_func)
 
     value =
@@ -180,7 +181,7 @@ defmodule Tarams do
         end)
         |> collect_validation_result()
         |> case do
-          :ok -> {:ok, {field_name, data}}
+          :ok -> {:ok, {alias, data}}
           {_, errors} -> {:error, {field_name, errors}}
         end
     end
