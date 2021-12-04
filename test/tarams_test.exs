@@ -68,8 +68,8 @@ defmodule ParamTest do
 
     test "scrub plug" do
       params = %{email: "   ", password: "123"}
-      assert %{params: %{email: nil, password: "123"}} = Tarams.plug_srub(%{params: params})
-      assert %{params: %{email: nil}} = Tarams.plug_srub(%{params: params}, [:email, :name])
+      assert %{params: %{email: nil, password: "123"}} = Tarams.plug_scrub(%{params: params})
+      assert %{params: %{email: nil}} = Tarams.plug_scrub(%{params: params}, [:email, :name])
     end
   end
 
