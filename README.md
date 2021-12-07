@@ -155,7 +155,7 @@ Or nested list schema
 
 ## Validation
 
-`Tarams` uses `Valdi` validation library. You can read more about [Valdi here]()
+`Tarams` uses `Valdi` validation library. You can read more about [Valdi here](https://github.com/bluzky/valdi)
 Basically it supports following validation
 
 - validate inclusion/exclusion
