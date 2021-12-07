@@ -169,7 +169,7 @@ defmodule Tarams do
 
     case cast_func.(value) do
       :error ->
-        {:error, {field_name, ["is in valid"]}}
+        {:error, {field_name, ["is invalid"]}}
 
       {:error, errors} ->
         {:error, {field_name, errors}}
