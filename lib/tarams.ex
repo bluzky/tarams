@@ -152,7 +152,8 @@ defmodule Tarams do
     {type, definitions} = Keyword.pop(definitions, :type)
     {default, definitions} = Keyword.pop(definitions, :default)
     {alias, definitions} = Keyword.pop(definitions, :as, field_name)
-    {cast_func, validations} = Keyword.pop(definitions, :cast_func)
+    {cast_func, definitions} = Keyword.pop(definitions, :cast_func)
+    {message, validations} = Keyword.pop(definitions, :message)
 
     value =
       case Map.fetch(data, field_name) do
@@ -167,23 +168,36 @@ defmodule Tarams do
         &cast_value(&1, type)
       end
 
-    case cast_func.(value) do
-      :error ->
-        {:error, {field_name, ["is invalid"]}}
+    result =
+      case cast_func.(value) do
+        :error ->
+          {:error, {field_name, ["is invalid"]}}
 
-      {:error, errors} ->
-        {:error, {field_name, errors}}
+        {:error, errors} ->
+          {:error, {field_name, errors}}
 
-      {:ok, data} ->
-        validations
-        |> Enum.map(fn validation ->
-          do_validate(data, validation)
-        end)
-        |> collect_validation_result()
-        |> case do
-          :ok -> {:ok, {alias, data}}
-          {_, errors} -> {:error, {field_name, errors}}
+        {:ok, data} ->
+          validations
+          |> Enum.map(fn validation ->
+            do_validate(data, validation)
+          end)
+          |> collect_validation_result()
+          |> case do
+            :ok -> {:ok, {alias, data}}
+            {_, errors} -> {:error, {field_name, errors}}
+          end
+      end
+
+    case result do
+      {:error, {field_name, _}} = error ->
+        if message do
+          {:error, {field_name, [message]}}
+        else
+          error
         end
+
+      ok ->
+        ok
     end
   end
 

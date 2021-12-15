@@ -387,5 +387,14 @@ defmodule ParamTest do
 
       assert {:error, %{user: %{name: ["is required"]}}} = Tarams.cast(data, @array_schema)
     end
+
+    test "error with custom message" do
+      schema = %{
+        age: [type: :integer, number: [min: 10], message: "so khong hop le"]
+      }
+
+      assert {:error, %{age: ["so khong hop le"]}} = Tarams.cast(%{"age" => "abc"}, schema)
+      assert {:error, %{age: ["so khong hop le"]}} = Tarams.cast(%{"age" => "1"}, schema)
+    end
   end
 end
