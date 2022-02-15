@@ -216,6 +216,10 @@ defmodule Tarams.Type do
     mod.cast(value)
   end
 
+  defp array(term, _, _, _) when not is_list(term) do
+    :error
+  end
+
   defp array([nil | t], fun, true, acc) do
     array(t, fun, true, [nil | acc])
   end
