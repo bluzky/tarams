@@ -222,6 +222,10 @@ defmodule Tarams.Schema do
     expand_field({field, [type: type]})
   end
 
+  defp expand_field({field, [type | tail]}) when is_atom(type) do
+    expand_field({field, [{:type, type} | tail]})
+  end
+
   defp expand_field({field, {:array, type}}) do
     {field, [type: {:array, expand_type(type)}]}
   end

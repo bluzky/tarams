@@ -227,6 +227,13 @@ defmodule ParamTest do
       end)
     end
 
+    test "schema short hand" do
+      assert {:ok, %{number: 10}} = Tarams.cast(%{number: "10"}, %{number: :integer})
+
+      assert {:ok, %{number: 10}} =
+               Tarams.cast(%{number: "10"}, %{number: [:integer, number: [min: 5]]})
+    end
+
     test "cast ok" do
       assert 10 = Tarams.Type.cast!(:integer, 10)
       assert 10 = Tarams.Type.cast!(:integer, "10")
