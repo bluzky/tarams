@@ -40,8 +40,37 @@ defmodule Tarams.Type do
   defp cast_fun(:naive_datetime), do: &maybe_truncate_usec(cast_naive_datetime(&1))
   defp cast_fun(:utc_datetime), do: &maybe_truncate_usec(cast_utc_datetime(&1))
   defp cast_fun(:map), do: &cast_map/1
-
+  defp cast_fun(:decimal), do: &cast_decimal/1
   defp cast_fun(mod) when is_atom(mod), do: &maybe_cast_custom_type(mod, &1)
+
+  defp same_decimal(term) when is_integer(term), do: {:ok, Decimal.new(term)}
+  defp same_decimal(term) when is_float(term), do: {:ok, Decimal.from_float(term)}
+  defp same_decimal(%Decimal{} = term), do: check_decimal(term, true)
+  defp same_decimal(_), do: :error
+
+  defp check_decimal(%Decimal{coef: coef} = decimal, _) when is_integer(coef), do: {:ok, decimal}
+  defp check_decimal(_decimal, false), do: :error
+
+  defp check_decimal(decimal, true) do
+    raise ArgumentError, """
+    #{inspect(decimal)} is not allowed for type :decimal
+
+    `+Infinity`, `-Infinity`, and `NaN` values are not supported, even though the `Decimal` library handles them. \
+    To support them, you can create a custom type.
+    """
+  end
+
+  defp cast_decimal(term) when is_binary(term) do
+    case Decimal.parse(term) do
+      {:ok, decimal} -> check_decimal(decimal, false)
+      # The following two clauses exist to support earlier versions of Decimal.
+      {decimal, ""} -> check_decimal(decimal, false)
+      {_, remainder} when is_binary(remainder) and byte_size(remainder) > 0 -> :error
+      :error -> :error
+    end
+  end
+
+  defp cast_decimal(term), do: same_decimal(term)
 
   defp cast_fun({:array, {:embed, _, _} = type}) do
     fun = fn value -> cast(type, value) end
