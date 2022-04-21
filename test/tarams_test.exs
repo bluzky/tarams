@@ -150,6 +150,8 @@ defmodule ParamTest do
       [:float, 10, 10.0, :ok],
       [:float, "10", 10.0, :ok],
       [:float, "10xx", nil, :error],
+      [:decimal, "10.1", Decimal.new("10.1"), :ok],
+      [:decimal, "10.1a", nil, :error],
       [:map, %{name: "Bluz"}, %{name: "Bluz"}, :ok],
       [:map, %{"name" => "Bluz"}, %{"name" => "Bluz"}, :ok],
       [:map, [], nil, :error],

@@ -1,6 +1,6 @@
 %{
   "certifi": {:hex, :certifi, "2.6.1", "dbab8e5e155a0763eea978c913ca280a6b544bfa115633fa20249c3d396d9493", [:rebar3], [], "hexpm", "524c97b4991b3849dd5c17a631223896272c6b0af446778ba4675a1dff53bb7e"},
-  "decimal": {:hex, :decimal, "1.8.1", "a4ef3f5f3428bdbc0d35374029ffcf4ede8533536fa79896dd450168d9acdf3c", [:mix], [], "hexpm", "3cb154b00225ac687f6cbd4acc4b7960027c757a5152b369923ead9ddbca7aec"},
+  "decimal": {:hex, :decimal, "2.0.0", "a78296e617b0f5dd4c6caf57c714431347912ffb1d0842e998e9792b5642d697", [:mix], [], "hexpm", "34666e9c55dea81013e77d9d87370fe6cb6291d1ef32f46a1600230b1d44f577"},
   "earmark": {:hex, :earmark, "1.4.9", "837e4c1c5302b3135e9955f2bbf52c6c52e950c383983942b68b03909356c0d9", [:mix], [{:earmark_parser, ">= 1.4.9", [hex: :earmark_parser, repo: "hexpm", optional: false]}], "hexpm", "0d72df7d13a3dc8422882bed5263fdec5a773f56f7baeb02379361cb9e5b0d8e"},
   "earmark_parser": {:hex, :earmark_parser, "1.4.9", "819bda2049e6ee1365424e4ced1ba65806eacf0d2867415f19f3f80047f8037b", [:mix], [], "hexpm", "8bf54fddabf2d7e137a0c22660e71b49d5a0a82d1fb05b5af62f2761cd6485c4"},
   "ecto": {:hex, :ecto, "3.4.5", "2bcd262f57b2c888b0bd7f7a28c8a48aa11dc1a2c6a858e45dd8f8426d504265", [:mix], [{:decimal, "~> 1.6 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: false]}, {:jason, "~> 1.0", [hex: :jason, repo: "hexpm", optional: true]}, {:telemetry, "~> 0.4", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "8c6d1d4d524559e9b7a062f0498e2c206122552d63eacff0a6567ffe7a8e8691"},

@@ -54,7 +54,8 @@ defmodule Tarams.MixProject do
     [
       {:valdi, "~> 0.2.0"},
       {:ex_doc, "~> 0.22.1", only: [:dev]},
-      {:excoveralls, "~> 0.14", only: :test}
+      {:excoveralls, "~> 0.14", only: :test},
+      {:decimal, "~> 2.0"}
     ]
   end
 end
