@@ -7,18 +7,22 @@ Phoenix request params validation library.
 
 **Warning: Tarams v1.0.0 APIs is not back compatible**
 
-
-- [Why Tarams](#why-tarams)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Define schema](#define-schema)
-    - [Default value](#default-value)
-    - [Custom cast function](#custom-cast-function)
-    - [Nested schema](#nested-schema)
-- [Validation](#validation)
-- [Contributors](#contributors)
-
-
+- [Tarams](#tarams)
+    - [Why Tarams](#why-tarams)
+    - [Installation](#installation)
+    - [Usage](#usage)
+    - [Define schema](#define-schema)
+        - [Default value](#default-value)
+        - [Custom cast function](#custom-cast-function)
+            - [1. Custom cast fuction accept value only](#1-custom-cast-fuction-accept-value-only)
+            - [2. Custom cast function accept value and current object](#2-custom-cast-function-accept-value-and-current-object)
+            - [3.Custom cast function accept tuple {M, f}](#3custom-cast-function-accept-tuple-m-f)
+        - [Nested schema](#nested-schema)
+    - [Transform data](#transform-data)
+        - [Field name alias](#field-name-alias)
+        - [Convert data](#convert-data)
+    - [Validation](#validation)
+    - [Contributors](#contributors)
 
 
 ## Why Tarams
