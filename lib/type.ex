@@ -4,11 +4,6 @@ defmodule Tarams.Type do
   Much code of this module is borrowed from `Ecto.Type`
   """
 
-  # @base ~w(
-  #   integer float decimal boolean string map binary id binary_id any
-  #   datetime utc_datetime naive_datetime date time
-  # )a
-
   def cast({:embed, mod, params}, value), do: mod.cast(value, params)
 
   def cast(type, value) do
@@ -24,10 +19,6 @@ defmodule Tarams.Type do
     end
   end
 
-  # def is_base_type(type) do
-  #   type in @base
-  # end
-
   defp cast_fun(:boolean), do: &cast_boolean/1
   defp cast_fun(:integer), do: &cast_integer/1
   defp cast_fun(:float), do: &cast_float/1
@@ -42,6 +33,16 @@ defmodule Tarams.Type do
   defp cast_fun(:map), do: &cast_map/1
   defp cast_fun(:decimal), do: &cast_decimal/1
   defp cast_fun(mod) when is_atom(mod), do: &maybe_cast_custom_type(mod, &1)
+
+  defp cast_fun({:array, {:embed, _, _} = type}) do
+    fun = fn value -> cast(type, value) end
+    &array(&1, fun, true, [])
+  end
+
+  defp cast_fun({:array, type}) do
+    fun = cast_fun(type)
+    &array(&1, fun, true, [])
+  end
 
   defp same_decimal(term) when is_integer(term), do: {:ok, Decimal.new(term)}
   defp same_decimal(term) when is_float(term), do: {:ok, Decimal.from_float(term)}
@@ -71,16 +72,6 @@ defmodule Tarams.Type do
   end
 
   defp cast_decimal(term), do: same_decimal(term)
-
-  defp cast_fun({:array, {:embed, _, _} = type}) do
-    fun = fn value -> cast(type, value) end
-    &array(&1, fun, true, [])
-  end
-
-  defp cast_fun({:array, type}) do
-    fun = cast_fun(type)
-    &array(&1, fun, true, [])
-  end
 
   defp cast_boolean(term) when term in ~w(true 1), do: {:ok, true}
   defp cast_boolean(term) when term in ~w(false 0), do: {:ok, false}
