@@ -149,55 +149,60 @@ defmodule Tarams do
   end
 
   defp cast_field(data, {field_name, definitions}) do
-    {type, definitions} = Keyword.pop(definitions, :type)
-    {default, definitions} = Keyword.pop(definitions, :default)
     {alias, definitions} = Keyword.pop(definitions, :as, field_name)
-    {cast_func, definitions} = Keyword.pop(definitions, :cast_func)
-    {message, validations} = Keyword.pop(definitions, :message)
+    {custom_message, definitions} = Keyword.pop(definitions, :message)
 
+    # remote transform option from definition
+    validations = Keyword.drop(definitions, [:into, :type, :cast_func, :default])
+
+    # 1. cast value
+    with {:ok, value} <- do_cast(data, field_name, definitions),
+         # 2. apply validation
+         :ok <- apply_validations(value, validations),
+         {:ok, value} <- apply_transform(value, definitions, data) do
+      {:ok, {alias, value}}
+    else
+      {:error, error} ->
+        # 3.2 Handle custom error message
+        if custom_message do
+          {:error, {field_name, [custom_message]}}
+        else
+          errors = if is_binary(error), do: [error], else: error
+
+          {:error, {field_name, errors}}
+        end
+    end
+  end
+
+  # cast data to proper type
+  defp do_cast(data, field_name, definitions) do
     value =
       case Map.fetch(data, field_name) do
         {:ok, value} -> value
-        _ -> Map.get(data, "#{field_name}", default)
+        _ -> Map.get(data, "#{field_name}", definitions[:default])
       end
 
-    cast_func =
-      if is_function(cast_func) do
-        cast_func
-      else
-        &cast_value(&1, type)
+    cast_result =
+      case definitions[:cast_func] do
+        nil ->
+          cast_value(value, definitions[:type])
+
+        func when is_function(func, 1) ->
+          func.(value)
+
+        func when is_function(func, 2) ->
+          func.(value, data)
+
+        {mod, func} when is_atom(mod) and is_atom(func) ->
+          apply(mod, func, [value, data])
+
+        _ ->
+          {:error, "invalid cast function"}
       end
 
-    result =
-      case cast_func.(value) do
-        :error ->
-          {:error, {field_name, ["is invalid"]}}
-
-        {:error, errors} ->
-          {:error, {field_name, errors}}
-
-        {:ok, data} ->
-          validations
-          |> Enum.map(fn validation ->
-            do_validate(data, validation)
-          end)
-          |> collect_validation_result()
-          |> case do
-            :ok -> {:ok, {alias, data}}
-            {_, errors} -> {:error, {field_name, errors}}
-          end
-      end
-
-    case result do
-      {:error, {field_name, _}} = error ->
-        if message do
-          {:error, {field_name, [message]}}
-        else
-          error
-        end
-
-      ok ->
-        ok
+    case cast_result do
+      :error -> {:error, "is invalid"}
+      others -> others
     end
   end
 
@@ -229,14 +234,45 @@ defmodule Tarams do
 
   def cast_array(_, [], acc), do: {:ok, Enum.reverse(acc)}
 
+  # apply list of validation to value
+  defp apply_validations(value, validations) do
+    validations
+    |> Enum.map(fn validation ->
+      do_validate(value, validation)
+    end)
+    |> collect_validation_result()
+  end
+
+  # handle custom validation for required
   defp do_validate(value, {:required, _} = validator) do
     Valdi.validate(value, [validator])
   end
 
+  # skip validation for nil
   defp do_validate(nil, _), do: :ok
 
   defp do_validate(value, validator) do
     Valdi.validate(value, [validator])
+  end
+
+  # transform data
+  defp apply_transform(value, definitions, data) do
+    case definitions[:into] do
+      nil ->
+        {:ok, value}
+
+      {mod, func} when is_atom(mod) and is_atom(func) ->
+        apply(mod, func, [value, data])
+
+      func when is_function(func, 1) ->
+        func.(value)
+
+      func when is_function(func, 2) ->
+        func.(value, data)
+
+      _ ->
+        {:error, "invalid transform function"}
+    end
   end
 
   defp collect_validation_result(results) do
