@@ -232,6 +232,10 @@ defmodule Tarams.Type do
   defp cast_map(term) when is_map(term), do: {:ok, term}
   defp cast_map(_), do: :error
 
+  defp maybe_cast_custom_type(mod, %schema{} = value) do
+    {:ok, value}
+  end
+
   defp maybe_cast_custom_type(mod, value) do
     mod.cast(value)
   end

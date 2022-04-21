@@ -285,6 +285,56 @@ defmodule ParamTest do
                })
     end
 
+    test "cast func with 2 arguments" do
+      assert {:ok, %{name: "DZUNG"}} =
+               Tarams.cast(%{name: "Dzung", strong: true}, %{
+                 name: [
+                   type: :string,
+                   cast_func: fn value, data ->
+                     {:ok, (data.strong && String.upcase(value)) || value}
+                   end
+                 ]
+               })
+    end
+
+    def upcase_string(value, _data) do
+      {:ok, String.upcase(value)}
+    end
+
+    test "cast func with tuple module & function" do
+      assert {:ok, %{name: "DZUNG"}} =
+               Tarams.cast(%{name: "Dzung"}, %{
+                 name: [
+                   type: :string,
+                   cast_func: {__MODULE__, :upcase_string}
+                 ]
+               })
+    end
+
+    test "cast func with 3 arguments return error" do
+      assert {:error, %{name: ["invalid cast function"]}} =
+               Tarams.cast(%{name: "Dzung", strong: true}, %{
+                 name: [
+                   type: :string,
+                   cast_func: fn value, _data, _name ->
+                     {:ok, value}
+                   end
+                 ]
+               })
+    end
+
+    test "cast func return custom message" do
+      assert {:error, %{name: ["custom error"]}} =
+               Tarams.cast(%{name: "Dzung"}, %{
+                 name: [
+                   type: :string,
+                   cast_func: fn _ ->
+                     {:error, "custom error"}
+                   end
+                 ]
+               })
+    end
+
     @schema %{
       user: [
         type: %{
@@ -318,6 +368,7 @@ defmodule ParamTest do
       assert {:ok, %{user: %{email: nil}}} = Tarams.cast(data, @schema)
     end
 
+    @tag :only
     test "cast embed validation invalid should error" do
       data = %{
         user: %{
@@ -408,6 +459,77 @@ defmodule ParamTest do
 
       assert {:error, %{age: ["so khong hop le"]}} = Tarams.cast(%{"age" => "abc"}, schema)
       assert {:error, %{age: ["so khong hop le"]}} = Tarams.cast(%{"age" => "1"}, schema)
+    end
+  end
+
+  describe "test transform" do
+    test "transform function no transform" do
+      schema = %{
+        status: [:integer, as: :product_status, into: nil]
+      }
+
+      data = %{status: 0, deleted: true}
+
+      assert {:ok, %{product_status: 0}} = Tarams.cast(data, schema)
+    end
+
+    test "transform function accept value only" do
+      convert_status = fn status ->
+        text =
+          case status do
+            0 -> "draft"
+            1 -> "published"
+            2 -> "deleted"
+          end
+
+        {:ok, text}
+      end
+
+      schema = %{
+        status: [:integer, as: :product_status, into: convert_status]
+      }
+
+      data = %{
+        status: 0
+      }
+
+      assert {:ok, %{product_status: "draft"}} = Tarams.cast(data, schema)
+    end
+
+    test "transform function with context" do
+      convert_status = fn status, data ->
+        text =
+          case status do
+            0 -> "draft"
+            1 -> "published"
+            2 -> "banned"
+          end
+
+        text = if data.deleted, do: "deleted", else: text
+
+        {:ok, text}
+      end
+
+      schema = %{
+        status: [:integer, as: :product_status, into: convert_status]
+      }
+
+      data = %{
+        status: 0,
+        deleted: true
+      }
+
+      assert {:ok, %{product_status: "deleted"}} = Tarams.cast(data, schema)
+    end
+
+    test "transform function with module, function tuple" do
+      schema = %{
+        status: [:string, as: :product_status, into: {__MODULE__, :upcase_string}]
+      }
+
+      data = %{status: "success"}
+
+      assert {:ok, %{product_status: "SUCCESS"}} = Tarams.cast(data, schema)
     end
   end
 end

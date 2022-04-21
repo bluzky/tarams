@@ -7,18 +7,22 @@ Phoenix request params validation library.
 
 **Warning: Tarams v1.0.0 APIs is not back compatible**
 
-
-- [Why Tarams](#why-tarams)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Define schema](#define-schema)
-    - [Default value](#default-value)
-    - [Custom cast function](#custom-cast-function)
-    - [Nested schema](#nested-schema)
-- [Validation](#validation)
-- [Contributors](#contributors)
-
-
+- [Tarams](#tarams)
+    - [Why Tarams](#why-tarams)
+    - [Installation](#installation)
+    - [Usage](#usage)
+    - [Define schema](#define-schema)
+        - [Default value](#default-value)
+        - [Custom cast function](#custom-cast-function)
+            - [1. Custom cast fuction accept value only](#1-custom-cast-fuction-accept-value-only)
+            - [2. Custom cast function accept value and current object](#2-custom-cast-function-accept-value-and-current-object)
+            - [3.Custom cast function accept tuple {M, f}](#3custom-cast-function-accept-tuple-m-f)
+        - [Nested schema](#nested-schema)
+    - [Transform data](#transform-data)
+        - [Field name alias](#field-name-alias)
+        - [Convert data](#convert-data)
+    - [Validation](#validation)
+    - [Contributors](#contributors)
 
 
 ## Why Tarams
@@ -100,6 +104,8 @@ schema = %{
 You can define your own casting function, `tarams` provide `cast_func` option.
 Your `cast_func` must follows this spec 
 
+#### 1. Custom cast fuction accept value only
+
 ```elixir
 fn(any) :: {:ok, any} | {:error, binary} | :error
 ```
@@ -124,6 +130,53 @@ schema = %{
 Tarams.cast(%{user_id: "1,2,3"}, schema)
 ```
 This is a demo parser function.
+
+#### 2. Custom cast function accept value and current object
+
+```elixir
+data = %{
+   name: "tada",
+   bold: true
+}
+
+schema = %{
+    name: [type: :string, cast_func: fn value, data -> 
+        {:ok, (if data.bold, do: String.upcase(value), else: value)}
+    end]
+}
+
+Tarams.cast(data, schema)
+
+# > %{name: "TADA"}
+```
+
+#### 3.Custom cast function accept tuple {M, f}
+
+Your cast function must accept 2 arguments
+
+```elixir
+defmodule MyModule do
+    def upcase(value, data) do
+        {:ok, (if data.bold, do: String.upcase(value), else: value)}
+    end
+end
+```
+
+```elixir
+data = %{
+   name: "tada",
+   bold: true
+}
+
+schema = %{
+    name: [type: :string, cast_func: {MyModule, :upcase}]
+}
+
+Tarams.cast(data, schema)
+
+# > %{name: "TADA"}
+```
+
 
 ### Nested schema
 With `Tarams` you can parse and validate nested map and list easily
@@ -150,6 +203,43 @@ Or nested list schema
         city: :string
     }}]
 }
+```
+
+
+## Transform data
+
+### Field name alias
+
+You can set alias name for schema fields
+```elixir
+data = %{
+   name: "tada"
+}
+
+schema = %{
+    name: [type: :string, as: :full_name]
+}
+
+Tarams.cast(data, schema)
+
+# > %{full_name: "tada"}
+```
+
+### Convert data
+
+You can specify a function similar to `cast_func` to manipulate data after casted.
+However data object passed to transform function is original data before casting.
+
+```elixir
+data = %{name: "tada"}
+
+schema = %{
+    name: [type: :string, into: fn value -> {:ok, "name: #{value}}" end]
+}
+
+Tarams.cast(data, schema)
+
+# > %{name: "name: tada"}
 ```
 
 
