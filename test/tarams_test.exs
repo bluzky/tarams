@@ -531,5 +531,25 @@ defmodule ParamTest do
 
       assert {:ok, %{product_status: "SUCCESS"}} = Tarams.cast(data, schema)
     end
+
+    test "transform function return value" do
+      convert_status = fn status ->
+        case status do
+          0 -> "draft"
+          1 -> "published"
+          2 -> "deleted"
+        end
+      end
+
+      schema = %{
+        status: [:integer, as: :product_status, into: convert_status]
+      }
+
+      data = %{
+        status: 0
+      }
+
+      assert {:ok, %{product_status: "draft"}} = Tarams.cast(data, schema)
+    end
   end
 end

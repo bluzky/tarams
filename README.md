@@ -231,15 +231,23 @@ You can specify a function similar to `cast_func` to manipulate data after caste
 However data object passed to transform function is original data before casting.
 
 ```elixir
-data = %{name: "tada"}
+data = %{status: 10}
 
 schema = %{
     name: [type: :string, into: fn value -> {:ok, "name: #{value}}" end]
 }
 
 Tarams.cast(data, schema)
-
 # > %{name: "name: tada"}
+
+```
+
+- Transform function can return tuple `{:ok, value}`, `{:error, message}` or value directly.
+
+```elixir
+schema = %{
+    value: [type: :integer, into: &to_string/1]
+}
 ```
 
 

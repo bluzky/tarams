@@ -257,21 +257,28 @@ defmodule Tarams do
 
   # transform data
   defp apply_transform(value, definitions, data) do
-    case definitions[:into] do
-      nil ->
-        {:ok, value}
+    result =
+      case definitions[:into] do
+        nil ->
+          {:ok, value}
 
-      {mod, func} when is_atom(mod) and is_atom(func) ->
-        apply(mod, func, [value, data])
+        {mod, func} when is_atom(mod) and is_atom(func) ->
+          apply(mod, func, [value, data])
 
-      func when is_function(func, 1) ->
-        func.(value)
+        func when is_function(func, 1) ->
+          func.(value)
 
-      func when is_function(func, 2) ->
-        func.(value, data)
+        func when is_function(func, 2) ->
+          func.(value, data)
 
-      _ ->
-        {:error, "invalid transform function"}
+        _ ->
+          {:error, "invalid transform function"}
+      end
+
+    # support function return tuple or value
+    case result do
+      {status, _value} when status in [:error, :ok] -> result
+      value -> {:ok, value}
     end
   end
 
