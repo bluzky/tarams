@@ -148,6 +148,13 @@ defmodule Tarams do
     {status, Map.new(results)}
   end
 
+  def cast!(data, schema) do
+    case cast(data, schema) do
+      {:ok, value} -> value
+      _ -> raise "Tarams :: bad input data"
+    end
+  end
+
   defp cast_field(data, {field_name, definitions}) do
     {alias, definitions} = Keyword.pop(definitions, :as, field_name)
     {custom_message, definitions} = Keyword.pop(definitions, :message)

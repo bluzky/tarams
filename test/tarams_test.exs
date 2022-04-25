@@ -245,9 +245,19 @@ defmodule ParamTest do
       assert 10 = Tarams.Type.cast!(:integer, "10")
     end
 
-    test "cast raise exception" do
+    test "type cast raise exception" do
       assert_raise RuntimeError, fn ->
         Tarams.Type.cast!(:integer, "10xx")
+      end
+    end
+
+    test "Tarams.cast! success" do
+      assert %{number: 10} = Tarams.cast!(%{number: "10"}, %{number: :integer})
+    end
+
+    test "Tarams.cast! raise exception" do
+      assert_raise RuntimeError, fn ->
+        Tarams.cast!(%{number: 10}, %{number: {:array, :string}})
       end
     end
 
