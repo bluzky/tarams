@@ -270,7 +270,16 @@ defmodule Tarams do
           {:ok, value}
 
         {mod, func} when is_atom(mod) and is_atom(func) ->
-          apply(mod, func, [value, data])
+          cond do
+            Kernel.function_exported?(mod, func, 1) ->
+              apply(mod, func, [value])
+
+            Kernel.function_exported?(mod, func, 2) ->
+              apply(mod, func, [value, data])
+
+            true ->
+              {:error, "invalid transform function"}
+          end
 
         func when is_function(func, 1) ->
           func.(value)

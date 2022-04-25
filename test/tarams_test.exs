@@ -311,6 +311,10 @@ defmodule ParamTest do
       {:ok, String.upcase(value)}
     end
 
+    def upcase_string1(value) do
+      {:ok, String.upcase(value)}
+    end
+
     test "cast func with tuple module & function" do
       assert {:ok, %{name: "DZUNG"}} =
                Tarams.cast(%{name: "Dzung"}, %{
@@ -532,9 +536,19 @@ defmodule ParamTest do
       assert {:ok, %{product_status: "deleted"}} = Tarams.cast(data, schema)
     end
 
-    test "transform function with module, function tuple" do
+    test "transform function with module, function tuple 2 arguments" do
       schema = %{
         status: [:string, as: :product_status, into: {__MODULE__, :upcase_string}]
+      }
+
+      data = %{status: "success"}
+
+      assert {:ok, %{product_status: "SUCCESS"}} = Tarams.cast(data, schema)
+    end
+
+    test "transform function with module, function tuple 1 arguments" do
+      schema = %{
+        status: [:string, as: :product_status, into: {__MODULE__, :upcase_string1}]
       }
 
       data = %{status: "success"}
