@@ -155,12 +155,13 @@ defmodule Tarams do
     end
   end
 
+  @validation_ignore [:into, :type, :cast_func, :default, :from]
   defp cast_field(data, {field_name, definitions}) do
     {alias, definitions} = Keyword.pop(definitions, :as, field_name)
     {custom_message, definitions} = Keyword.pop(definitions, :message)
 
     # remote transform option from definition
-    validations = Keyword.drop(definitions, [:into, :type, :cast_func, :default])
+    validations = Keyword.drop(definitions, @validation_ignore)
 
     # 1. cast value
     with {:ok, value} <- do_cast(data, field_name, definitions),
@@ -183,6 +184,13 @@ defmodule Tarams do
 
   # cast data to proper type
   defp do_cast(data, field_name, definitions) do
+    field_name =
+      if definitions[:from] do
+        definitions[:from]
+      else
+        field_name
+      end
+
     value =
       case Map.fetch(data, field_name) do
         {:ok, value} -> value
