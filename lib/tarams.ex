@@ -3,117 +3,11 @@ defmodule Tarams do
   Params provide some helpers method to work with parameters
   """
 
-  @doc """
-  A plug which do srubbing params
-
-  **Use in Router**
-
-      defmodule MyApp.Router do
-        ...
-        plug Tarams.plug_scrub
-        ...
-      end
-
-  **Use in controller**
-
-      plug Tarams.plug_scrub when action in [:index, :show]
-      # or specify which field to scrub
-      plug Tarams.plug_scrub, ["id", "keyword"] when action in [:index, :show]
-
-  """
-  def plug_scrub(conn, keys \\ []) do
-    params =
-      if keys == [] do
-        scrub_param(conn.params)
-      else
-        Enum.reduce(keys, conn.params, fn key, params ->
-          case Map.fetch(conn.params, key) do
-            {:ok, value} -> Map.put(params, key, scrub_param(value))
-            :error -> params
-          end
-        end)
-      end
-
-    %{conn | params: params}
-  end
-
-  @doc """
-  Convert all parameter which value is empty string or string with all whitespace to nil. It works with nested map and list too.
-
-  **Example**
-
-      params = %{"keyword" => "   ", "email" => "", "type" => "customer"}
-      Tarams.scrub_param(params)
-      # => %{"keyword" => nil, "email" => nil, "type" => "customer"}
-
-      params = %{user_ids: [1, 2, "", "  "]}
-      Tarams.scrub_param(params)
-      # => %{user_ids: [1, 2, nil, nil]}
-  """
-  def scrub_param(%{__struct__: mod} = struct) when is_atom(mod) do
-    struct
-  end
-
-  def scrub_param(%{} = param) do
-    Enum.reduce(param, %{}, fn {k, v}, acc ->
-      Map.put(acc, k, scrub_param(v))
-    end)
-  end
-
-  def scrub_param(param) when is_list(param) do
-    Enum.map(param, &scrub_param/1)
-  end
-
-  def scrub_param(param) do
-    if scrub?(param), do: nil, else: param
-  end
-
-  defp scrub?(" " <> rest), do: scrub?(rest)
-  defp scrub?(""), do: true
-  defp scrub?(_), do: false
-
-  @doc """
-  Clean all nil field from params, support nested map and list.
-
-  **Example**
-
-      params = %{"keyword" => nil, "email" => nil, "type" => "customer"}
-      Tarams.clean_nil(params)
-      # => %{"type" => "customer"}
-
-      params = %{user_ids: [1, 2, nil]}
-      Tarams.clean_nil(params)
-      # => %{user_ids: [1, 2]}
-  """
-  @spec clean_nil(any) :: any
-  def clean_nil(%{__struct__: mod} = param) when is_atom(mod) do
-    param
-  end
-
-  def clean_nil(%{} = param) do
-    Enum.reduce(param, %{}, fn {k, v}, acc ->
-      if is_nil(v) do
-        acc
-      else
-        Map.put(acc, k, clean_nil(v))
-      end
-    end)
-  end
-
-  def clean_nil(param) when is_list(param) do
-    Enum.reduce(param, [], fn item, acc ->
-      if is_nil(item) do
-        acc
-      else
-        [clean_nil(item) | acc]
-      end
-    end)
-    |> Enum.reverse()
-  end
-
-  def clean_nil(param), do: param
-
   alias Tarams.Type
+
+  defdelegate plug_scrub(conn, keys \\ []), to: Tarams.Utils
+  defdelegate scrub_param(data), to: Tarams.Utils
+  defdelegate clean_nil(data), to: Tarams.Utils
 
   @doc """
   Cast and validate params with given schema.
@@ -139,13 +33,16 @@ defmodule Tarams do
 
   @spec cast(data :: map(), schema :: map()) :: {:ok, map()} | {:error, errors :: map()}
   def cast(data, schema) do
-    {status, results} =
-      schema
-      |> Tarams.Schema.expand()
-      |> Enum.map(&cast_field(data, &1))
-      |> collect_schema_result()
+    schema = schema |> Tarams.Schema.expand()
 
-    {status, Map.new(results)}
+    with {:ok, data} <- cast_data(data, schema),
+         data <- Map.new(data),
+         :ok <- validate_data(data, schema),
+         {:ok, data} <- transform_data(data, schema) do
+      {:ok, Map.new(data)}
+    else
+      {:error, errors} -> {:error, Map.new(errors)}
+    end
   end
 
   def cast!(data, schema) do
@@ -155,20 +52,34 @@ defmodule Tarams do
     end
   end
 
-  @validation_ignore [:into, :type, :cast_func, :default, :from]
+  defp cast_data(data, schema) do
+    schema
+    |> Enum.map(&cast_field(data, &1))
+    |> collect_schema_result()
+  end
+
+  defp validate_data(data, schema) do
+    schema
+    |> Enum.map(&validate_field(data, &1))
+    |> collect_schema_result()
+    |> case do
+      {:error, errors} -> {:error, Map.new(errors)}
+      _ -> :ok
+    end
+  end
+
+  defp transform_data(data, schema) do
+    schema
+    |> Enum.map(&transform_field(data, &1))
+    |> collect_schema_result()
+  end
+
   defp cast_field(data, {field_name, definitions}) do
-    {alias, definitions} = Keyword.pop(definitions, :as, field_name)
     {custom_message, definitions} = Keyword.pop(definitions, :message)
 
-    # remote transform option from definition
-    validations = Keyword.drop(definitions, @validation_ignore)
-
     # 1. cast value
-    with {:ok, value} <- do_cast(data, field_name, definitions),
-         # 2. apply validation
-         :ok <- apply_validations(value, validations),
-         {:ok, value} <- apply_transform(value, definitions, data) do
-      {:ok, {alias, value}}
+    with {:ok, value} <- do_cast(data, field_name, definitions) do
+      {:ok, {field_name, value}}
     else
       {:error, error} ->
         # 3.2 Handle custom error message
@@ -191,33 +102,27 @@ defmodule Tarams do
         field_name
       end
 
-    value =
-      case Map.fetch(data, field_name) do
-        {:ok, value} -> value
-        _ -> Map.get(data, "#{field_name}", definitions[:default])
-      end
+    value = get_value(data, field_name, definitions[:default])
 
     cast_result =
       case definitions[:cast_func] do
         nil ->
           cast_value(value, definitions[:type])
 
-        func when is_function(func, 1) ->
-          func.(value)
-
-        func when is_function(func, 2) ->
-          func.(value, data)
-
-        {mod, func} when is_atom(mod) and is_atom(func) ->
-          apply(mod, func, [value, data])
-
-        _ ->
-          {:error, "invalid cast function"}
+        func ->
+          apply_function(func, value, data)
       end
 
     case cast_result do
       :error -> {:error, "is invalid"}
       others -> others
+    end
+  end
+
+  defp get_value(data, field_name, default \\ nil) do
+    case Map.fetch(data, field_name) do
+      {:ok, value} -> value
+      _ -> Map.get(data, "#{field_name}") || default
     end
   end
 
@@ -249,60 +154,98 @@ defmodule Tarams do
 
   def cast_array(_, [], acc), do: {:ok, Enum.reverse(acc)}
 
-  # apply list of validation to value
-  defp apply_validations(value, validations) do
-    validations
+  @validation_ignore [:into, :type, :cast_func, :default, :from, :message, :as]
+  defp validate_field(data, {field_name, definitions}) do
+    value = get_value(data, field_name)
+    # remote transform option from definition
+    Keyword.drop(definitions, @validation_ignore)
     |> Enum.map(fn validation ->
-      do_validate(value, validation)
+      do_validate(value, data, validation)
     end)
     |> collect_validation_result()
+    |> case do
+      {:error, errors} -> {:error, {field_name, errors}}
+      :ok -> :ok
+    end
   end
 
   # handle custom validation for required
-  defp do_validate(value, {:required, _} = validator) do
-    Valdi.validate(value, [validator])
+  # Support dynamic require validation
+  defp do_validate(value, data, {:required, required}) do
+    if is_boolean(required) do
+      Valdi.validate(value, [{:required, required}])
+    else
+      case apply_function(required, value, data) do
+        {:error, _} = error ->
+          error
+
+        rs ->
+          is_required = rs not in [false, nil]
+          Valdi.validate(value, [{:required, is_required}])
+      end
+    end
   end
 
   # skip validation for nil
-  defp do_validate(nil, _), do: :ok
+  defp do_validate(nil, _, _), do: :ok
 
-  defp do_validate(value, validator) do
+  # support custom validate fuction with whole data
+  defp do_validate(value, data, {:func, func}) do
+    case func do
+      {mod, func} -> apply(mod, func, [value, data])
+      {mod, func, args} -> apply(mod, func, args ++ [value, data])
+      func when is_function(func) -> func.(value)
+      _ -> {:error, "invalid custom validation function"}
+    end
+  end
+
+  defp do_validate(value, _, validator) do
     Valdi.validate(value, [validator])
   end
 
-  # transform data
-  defp apply_transform(value, definitions, data) do
+  defp transform_field(data, {field_name, definitions}) do
+    value = get_value(data, field_name)
+    field_name = definitions[:as] || field_name
+
     result =
       case definitions[:into] do
         nil ->
           {:ok, value}
 
-        {mod, func} when is_atom(mod) and is_atom(func) ->
-          cond do
-            Kernel.function_exported?(mod, func, 1) ->
-              apply(mod, func, [value])
-
-            Kernel.function_exported?(mod, func, 2) ->
-              apply(mod, func, [value, data])
-
-            true ->
-              {:error, "invalid transform function"}
-          end
-
-        func when is_function(func, 1) ->
-          func.(value)
-
-        func when is_function(func, 2) ->
-          func.(value, data)
-
-        _ ->
-          {:error, "invalid transform function"}
+        func ->
+          apply_function(func, value, data)
       end
 
     # support function return tuple or value
     case result do
-      {status, _value} when status in [:error, :ok] -> result
-      value -> {:ok, value}
+      {status, value} when status in [:error, :ok] -> {status, {field_name, value}}
+      value -> {:ok, {field_name, value}}
+    end
+  end
+
+  # Apply custom function for validate, cast, and required
+  defp apply_function(func, value, data) do
+    case func do
+      {mod, func} ->
+        cond do
+          Kernel.function_exported?(mod, func, 1) ->
+            apply(mod, func, [value])
+
+          Kernel.function_exported?(mod, func, 2) ->
+            apply(mod, func, [value, data])
+
+          true ->
+            {:error, "bad function"}
+        end
+
+      func when is_function(func, 2) ->
+        func.(value, data)
+
+      func when is_function(func, 1) ->
+        func.(value)
+
+      _ ->
+        {:error, "bad function"}
     end
   end
 

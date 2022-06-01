@@ -15,118 +15,6 @@ defmodule ParamTest do
   use ExUnit.Case
   alias Tarams
 
-  defmodule Address do
-    defstruct [:province, :city]
-  end
-
-  describe "test srub_params" do
-    test "scrub empty string to nil" do
-      params = %{"email" => "", "type" => "customer"}
-      assert %{"email" => nil, "type" => "customer"} = Tarams.scrub_param(params)
-    end
-
-    test "scrub string with all space to nil" do
-      params = %{"email" => "   ", "type" => "customer"}
-      assert %{"email" => nil, "type" => "customer"} = Tarams.scrub_param(params)
-    end
-
-    test "scrub success with atom key" do
-      params = %{email: "   ", password: "123"}
-      assert %{email: nil, password: "123"} = Tarams.scrub_param(params)
-    end
-
-    test "scrub success with nested map" do
-      params = %{
-        email: "   ",
-        password: "123",
-        address: %{street: "", province: "   ", city: "HCM"}
-      }
-
-      assert %{address: %{street: nil, province: nil, city: "HCM"}} = Tarams.scrub_param(params)
-    end
-
-    test "scrub array params" do
-      params = %{ids: [1, 2, "3", "", "  "]}
-      assert %{ids: [1, 2, "3", nil, nil]} = Tarams.scrub_param(params)
-    end
-
-    test "scrub success with mix atom and string key" do
-      params = %{email: "   "} |> Map.put("type", "customer")
-      assert %{email: nil} = Tarams.scrub_param(params)
-    end
-
-    test "scrub skip struct" do
-      params = %{
-        "email" => "   ",
-        "type" => "customer",
-        "address" => %Address{province: "   ", city: "Hochiminh"}
-      }
-
-      assert %{"address" => %Address{province: "   ", city: "Hochiminh"}} =
-               Tarams.scrub_param(params)
-    end
-
-    test "scrub plug" do
-      params = %{email: "   ", password: "123"}
-      assert %{params: %{email: nil, password: "123"}} = Tarams.plug_scrub(%{params: params})
-      assert %{params: %{email: nil}} = Tarams.plug_scrub(%{params: params}, [:email, :name])
-    end
-  end
-
-  describe "test clean_nil" do
-    test "clean nil map" do
-      params = %{"email" => nil, "type" => "customer"}
-      assert %{"type" => "customer"} = Tarams.clean_nil(params)
-    end
-
-    test "scrub nil success with list" do
-      params = %{ids: [2, nil, 3, nil]}
-      assert %{ids: [2, 3]} = Tarams.clean_nil(params)
-    end
-
-    test "clean nil success with nested map" do
-      params = %{
-        email: nil,
-        password: "123",
-        address: %{street: nil, province: nil, city: "HCM"}
-      }
-
-      assert %{address: %{city: "HCM"}} = Tarams.clean_nil(params)
-    end
-
-    test "clean nil success with nested  list" do
-      params = %{
-        users: [
-          %{
-            name: nil,
-            age: 20,
-            hobbies: ["cooking", nil]
-          },
-          nil
-        ]
-      }
-
-      assert %{
-               users: [
-                 %{
-                   age: 20,
-                   hobbies: ["cooking"]
-                 }
-               ]
-             } == Tarams.clean_nil(params)
-    end
-
-    test "clean nil skip struct" do
-      params = %{
-        "email" => "dn@gmail.com",
-        "type" => "customer",
-        "address" => %Address{province: nil, city: "Hochiminh"}
-      }
-
-      assert %{"address" => %Address{province: nil, city: "Hochiminh"}} = Tarams.clean_nil(params)
-    end
-  end
-
   alias ParamTest.StringList
 
   describe "Tarams.cast" do
@@ -284,14 +172,10 @@ defmodule ParamTest do
                Tarams.cast(%{}, %{name: [type: :string, default: "Dzung"]})
     end
 
+    @tag :only
     test "cast use default function if field not exist in params" do
       assert {:ok, %{name: "123"}} =
                Tarams.cast(%{}, %{name: [type: :string, default: fn -> "123" end]})
-    end
-
-    test "cast validate required skip if default is set" do
-      assert {:ok, %{name: "Dzung"}} =
-               Tarams.cast(%{}, %{name: [type: :string, default: "Dzung", required: true]})
     end
 
     test "cast func is used if set" do
@@ -335,7 +219,7 @@ defmodule ParamTest do
     end
 
     test "cast func with 3 arguments return error" do
-      assert {:error, %{name: ["invalid cast function"]}} =
+      assert {:error, %{name: ["bad function"]}} =
                Tarams.cast(%{name: "Dzung", strong: true}, %{
                  name: [
                    type: :string,
@@ -391,7 +275,6 @@ defmodule ParamTest do
       assert {:ok, %{user: %{email: nil}}} = Tarams.cast(data, @schema)
     end
 
-    @tag :only
     test "cast embed validation invalid should error" do
       data = %{
         user: %{
@@ -405,6 +288,7 @@ defmodule ParamTest do
                Tarams.cast(data, @schema)
     end
 
+    @tag :only
     test "cast missing required value should error" do
       data = %{
         user: %{
@@ -481,7 +365,58 @@ defmodule ParamTest do
       }
 
       assert {:error, %{age: ["so khong hop le"]}} = Tarams.cast(%{"age" => "abc"}, schema)
-      assert {:error, %{age: ["so khong hop le"]}} = Tarams.cast(%{"age" => "1"}, schema)
+    end
+
+    test "cast validate required skip if default is set" do
+      assert {:ok, %{name: "Dzung"}} =
+               Tarams.cast(%{}, %{name: [type: :string, default: "Dzung", required: true]})
+    end
+
+    test "validate array item" do
+      assert {:ok, %{id: [1, 2, 3]}} =
+               Tarams.cast(%{id: ["1", "2", 3]}, %{
+                 id: [type: {:array, :integer}, each: [number: [min: 0]]]
+               })
+    end
+
+    test "validate array item with error" do
+      assert {:error, %{id: [[0, "must be greater than or equal to 2"]]}} =
+               Tarams.cast(%{id: ["1", "2", 3]}, %{
+                 id: [type: {:array, :integer}, each: [number: [min: 2]]]
+               })
+    end
+
+    test "dynamic require validation" do
+      assert {:ok, %{name: "Dzung"}} =
+               Tarams.cast(%{}, %{
+                 name: [type: :string, default: "Dzung", required: fn _, _ -> true end]
+               })
+
+      assert {:error, %{image: ["is required"]}} =
+               Tarams.cast(%{}, %{
+                 name: [type: :string, default: "Dzung", required: true],
+                 image: [type: :string, required: fn _, data -> data.name == "Dzung" end]
+               })
+
+      assert {:error, %{image: ["is required"]}} =
+               Tarams.cast(%{}, %{
+                 name: [type: :string, default: "Dzung", required: true],
+                 image: [type: :string, required: {__MODULE__, :should_require_image}]
+               })
+
+      assert {:error, %{image: ["is required"]}} =
+               Tarams.cast(%{}, %{
+                 name: [type: :string, default: "Dzung", required: true],
+                 image: [type: :string, required: {__MODULE__, :should_require_image1}]
+               })
+    end
+
+    def should_require_image1(_image) do
+      true
+    end
+
+    def should_require_image(_image, data) do
+      data.name == "Dzung"
     end
   end
 
@@ -519,6 +454,7 @@ defmodule ParamTest do
       assert {:ok, %{product_status: "draft"}} = Tarams.cast(data, schema)
     end
 
+    @tag :only
     test "transform function with context" do
       convert_status = fn status, data ->
         text =
@@ -534,7 +470,8 @@ defmodule ParamTest do
       end
 
       schema = %{
-        status: [:integer, as: :product_status, into: convert_status]
+        status: [:integer, as: :product_status, into: convert_status],
+        deleted: :boolean
       }
 
       data = %{
