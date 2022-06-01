@@ -43,15 +43,19 @@ def deps do
     {:tarams, "~> 1.0.0"}
   ]
 end
-```
+``**
 
 ## Usage
+
+**Process order**
+> Cast data -> validate casted data -> transform data
 
 ```elixir
 @index_params_schema  %{
     keyword: :string,
     status: [type: :string, required: true],
-    group_id: [type: :integer, numer: [greater_than: 0]]
+    group_id: [type: :integer, numer: [greater_than: 0]],
+    name: [type: :string, from: :another_field]
   }
 
 def index(conn, params) do
@@ -79,7 +83,8 @@ Field specs is a keyword list thay may include:
 - `type` is required, `Tarams` support same data type as `Ecto`. I borrowed code from Ecto
 - `default`: default value or default function
 - `cast_func`: custom cast function
-- `number, format, length, in, not_in, func, required` are available validations
+- `number, format, length, in, not_in, func, required, each` are available validations
+- `from`: use value from another field
 - `as`: alias key you will receive from `Tarams.cast` if casting is succeeded
 
 
@@ -206,6 +211,63 @@ Or nested list schema
 ```
 
 
+## Validation
+
+`Tarams` uses `Valdi` validation library. You can read more about [Valdi here](https://github.com/bluzky/valdi)
+Basically it supports following validation
+
+- validate inclusion/exclusion
+- validate length for string and enumerable types
+- validate number
+- validate string format/pattern
+- validate custom function
+- validate required(not nil) or not
+- validate each array item
+
+
+
+  ```elixir
+  product_schema = %{
+    sku: [type: :string, required: true, length: [min: 6, max: 20]]
+    name: [type: :string, required: true],
+    quantity: [type: :integer, number: [min: 0]],
+    type: [type: :string, in: ~w(physical digital)],
+    expiration_date: [type: :naive_datetime, func: &my_validation_func/1],
+    # dynamic required
+    width: [type: :integer, required: fn value, data -> data.type == "physical" end],
+    # validate each array item
+    tags: [type: {:array, :string}, each: [length: [max: 50]]]
+  }
+  ```
+
+### Dynamic required
+- Can accept function or `{module, function}` tuple
+- Only support 2 arity function
+
+
+```elixir
+def require_email?(value, data), do: is_nil(email.phone)
+
+....
+
+%{
+    phone: :string
+    name: [type: :string, required: fn value, data -> true end],
+    email: [type: :string, required: {__MODULE__, :require_email?}]
+}
+```
+
+### Validate array item
+Support validate array item with `:each` option, `each` accept a list of validators
+
+```elixir
+%{
+    values: [type: {:array, :number}, each: [number: [min: 20, max: 50]]]
+  }
+```
+
+
+
 ## Transform data
 
 ### Field name alias
@@ -249,31 +311,6 @@ schema = %{
     value: [type: :integer, into: &to_string/1]
 }
 ```
-
-
-## Validation
-
-`Tarams` uses `Valdi` validation library. You can read more about [Valdi here](https://github.com/bluzky/valdi)
-Basically it supports following validation
-
-- validate inclusion/exclusion
-- validate length for string and enumerable types
-- validate number
-- validate string format/pattern
-- validate custom function
-- validate required(not nil) or not
-
-
-
-  ```elixir
-  product_schema = %{
-    sku: [type: :string, required: true, length: [min: 6, max: 20]]
-    name: [type: :string, required: true],
-    quantity: [type: :integer, number: [min: 0]],
-    type: [type: :string, in: ~w(physical digital)],
-    expiration_date: [type: :naive_datetime, func: &my_validation_func/1]
-  }
-  ```
   
 
 ## Contributors
