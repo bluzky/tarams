@@ -109,17 +109,8 @@ defmodule Tarams do
         nil ->
           cast_value(value, definitions[:type])
 
-        func when is_function(func, 1) ->
-          func.(value)
-
-        func when is_function(func, 2) ->
-          func.(value, data)
-
-        {mod, func} when is_atom(mod) and is_atom(func) ->
-          apply(mod, func, [value, data])
-
-        _ ->
-          {:error, "invalid cast function"}
+        func ->
+          apply_function(func, value, data)
       end
 
     case cast_result do
@@ -181,21 +172,18 @@ defmodule Tarams do
   # handle custom validation for required
   # Support dynamic require validation
   defp do_validate(value, data, {:required, required}) do
-    tmp =
-      case required do
-        {mod, func, args} ->
-          apply(mod, func, args ++ [value, data])
+    if is_boolean(required) do
+      Valdi.validate(value, [{:required, required}])
+    else
+      case apply_function(required, value, data) do
+        {:error, _} = error ->
+          error
 
-        func when is_function(func) ->
-          func.(value, data)
-
-        _ ->
-          required
+        rs ->
+          is_required = rs not in [false, nil]
+          Valdi.validate(value, [{:required, is_required}])
       end
-
-    is_required = tmp not in [false, nil]
-
-    Valdi.validate(value, [{:required, is_required}])
+    end
   end
 
   # support custom validate fuction with whole data
@@ -224,38 +212,40 @@ defmodule Tarams do
         nil ->
           {:ok, value}
 
-        into when is_tuple(into) ->
-          {mod, func} =
-            case into do
-              {_mod, _func} -> into
-              {mod, func, _} -> {mod, func}
-            end
-
-          cond do
-            Kernel.function_exported?(mod, func, 1) ->
-              apply(mod, func, [value])
-
-            Kernel.function_exported?(mod, func, 2) ->
-              apply(mod, func, [value, data])
-
-            true ->
-              {:error, "invalid transform function"}
-          end
-
-        func when is_function(func, 2) ->
-          func.(value, data)
-
-        func when is_function(func, 1) ->
-          func.(value)
-
-        _ ->
-          {:error, "invalid transform function"}
+        func ->
+          apply_function(func, value, data)
       end
 
     # support function return tuple or value
     case result do
       {status, value} when status in [:error, :ok] -> {status, {field_name, value}}
       value -> {:ok, {field_name, value}}
+    end
+  end
+
+  # Apply custom function for validate, cast, and required
+  defp apply_function(func, value, data) do
+    case func do
+      {mod, func} ->
+        cond do
+          Kernel.function_exported?(mod, func, 1) ->
+            apply(mod, func, [value])
+
+          Kernel.function_exported?(mod, func, 2) ->
+            apply(mod, func, [value, data])
+
+          true ->
+            {:error, "bad function"}
+        end
+
+      func when is_function(func, 2) ->
+        func.(value, data)
+
+      func when is_function(func, 1) ->
+        func.(value)
+
+      _ ->
+        {:error, "bad function"}
     end
   end
 

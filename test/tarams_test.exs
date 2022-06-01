@@ -219,7 +219,7 @@ defmodule ParamTest do
     end
 
     test "cast func with 3 arguments return error" do
-      assert {:error, %{name: ["invalid cast function"]}} =
+      assert {:error, %{name: ["bad function"]}} =
                Tarams.cast(%{name: "Dzung", strong: true}, %{
                  name: [
                    type: :string,
@@ -387,8 +387,18 @@ defmodule ParamTest do
       assert {:error, %{image: ["is required"]}} =
                Tarams.cast(%{}, %{
                  name: [type: :string, default: "Dzung", required: true],
-                 image: [type: :string, required: {__MODULE__, :should_require_image, []}]
+                 image: [type: :string, required: {__MODULE__, :should_require_image}]
                })
+
+      assert {:error, %{image: ["is required"]}} =
+               Tarams.cast(%{}, %{
+                 name: [type: :string, default: "Dzung", required: true],
+                 image: [type: :string, required: {__MODULE__, :should_require_image1}]
+               })
+    end
+
+    def should_require_image1(_image) do
+      true
     end
 
     def should_require_image(_image, data) do
@@ -440,11 +450,9 @@ defmodule ParamTest do
             2 -> "banned"
           end
 
-        IO.inspect(data)
         text = if data.deleted, do: "deleted", else: text
 
         {:ok, text}
-        |> IO.inspect()
       end
 
       schema = %{
