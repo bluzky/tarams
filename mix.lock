@@ -19,5 +19,5 @@
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.6", "cf344f5692c82d2cd7554f5ec8fd961548d4fd09e7d22f5b62482e5aeaebd4b0", [:make, :mix, :rebar3], [], "hexpm", "bdb0d2471f453c88ff3908e7686f86f9be327d065cc1ec16fa4540197ea04680"},
   "telemetry": {:hex, :telemetry, "0.4.2", "2808c992455e08d6177322f14d3bdb6b625fbcfd233a73505870d8738a2f4599", [:rebar3], [], "hexpm", "2d1419bd9dda6a206d7b5852179511722e2b18812310d304620c7bd92a13fcef"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.7.0", "bc84380c9ab48177092f43ac89e4dfa2c6d62b40b8bd132b1059ecc7232f9a78", [:rebar3], [], "hexpm", "25eee6d67df61960cf6a794239566599b09e17e668d3700247bc498638152521"},
-  "valdi": {:hex, :valdi, "0.2.0", "d4fe8c514951ead16ec92237df7420b557c60327d1195c80ac9d92c0f14efe11", [:mix], [], "hexpm", "038702e83d5516b80eff07574b87b9aa5ccb29368ffc64cc57289bd4fd1497d3"},
+  "valdi": {:hex, :valdi, "0.3.0", "902005163c4d54ca11347a03f31546fa00cde5b00a1d860a8a78ab5cb583e8ca", [:mix], [], "hexpm", "60f63a2bd3d94a2def4073acd1f81931077ba29c7fd2f306a5fc9385e3e2fab9"},
 }

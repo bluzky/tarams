@@ -372,6 +372,20 @@ defmodule ParamTest do
                Tarams.cast(%{}, %{name: [type: :string, default: "Dzung", required: true]})
     end
 
+    test "validate array item" do
+      assert {:ok, %{id: [1, 2, 3]}} =
+               Tarams.cast(%{id: ["1", "2", 3]}, %{
+                 id: [type: {:array, :integer}, each: [number: [min: 0]]]
+               })
+    end
+
+    test "validate array item with error" do
+      assert {:error, %{id: [[0, "must be greater than or equal to 2"]]}} =
+               Tarams.cast(%{id: ["1", "2", 3]}, %{
+                 id: [type: {:array, :integer}, each: [number: [min: 2]]]
+               })
+    end
+
     test "dynamic require validation" do
       assert {:ok, %{name: "Dzung"}} =
                Tarams.cast(%{}, %{

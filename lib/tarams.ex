@@ -186,6 +186,9 @@ defmodule Tarams do
     end
   end
 
+  # skip validation for nil
+  defp do_validate(nil, _, _), do: :ok
+
   # support custom validate fuction with whole data
   defp do_validate(value, data, {:func, func}) do
     case func do
@@ -195,9 +198,6 @@ defmodule Tarams do
       _ -> {:error, "invalid custom validation function"}
     end
   end
-
-  # skip validation for nil
-  defp do_validate(nil, _, _), do: :ok
 
   defp do_validate(value, _, validator) do
     Valdi.validate(value, [validator])
