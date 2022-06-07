@@ -139,6 +139,19 @@ defmodule ParamTest do
       end
     end
 
+    test "cast mixed keys atom and string" do
+      assert {:ok, %{active: false, is_admin: true, name: "blue", age: 19}} =
+               Tarams.cast(
+                 %{"active" => false, "is_admin" => true, "name" => "blue", "age" => 19},
+                 %{
+                   active: :boolean,
+                   is_admin: :boolean,
+                   name: :string,
+                   age: :integer
+                 }
+               )
+    end
+
     test "Tarams.cast! success" do
       assert %{number: 10} = Tarams.cast!(%{number: "10"}, %{number: :integer})
     end

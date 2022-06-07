@@ -121,8 +121,17 @@ defmodule Tarams do
 
   defp get_value(data, field_name, default \\ nil) do
     case Map.fetch(data, field_name) do
-      {:ok, value} -> value
-      _ -> Map.get(data, "#{field_name}") || default
+      {:ok, value} ->
+        value
+
+      _ ->
+        case Map.fetch(data, "#{field_name}") do
+          {:ok, value} ->
+            value
+
+          _ ->
+            default
+        end
     end
   end
 
