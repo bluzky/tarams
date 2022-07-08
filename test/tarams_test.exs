@@ -301,6 +301,30 @@ defmodule ParamTest do
                Tarams.cast(data, @schema)
     end
 
+    test "cast empty embed type should error" do
+      data = %{
+        user: ""
+      }
+
+      assert {:error, %{user: %{name: ["is required"]}}} = Tarams.cast(data, @schema)
+    end
+
+    test "cast empty map embed type should error" do
+      data = %{
+        user: %{}
+      }
+
+      assert {:error, %{user: %{name: ["is required"]}}} = Tarams.cast(data, @schema)
+    end
+
+    test "cast nil embed type should error" do
+      data = %{
+        user: nil
+      }
+
+      assert {:error, %{user: %{name: ["is required"]}}} = Tarams.cast(data, @schema)
+    end
+
     @tag :only
     test "cast missing required value should error" do
       data = %{

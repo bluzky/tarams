@@ -135,6 +135,8 @@ defmodule Tarams do
     end
   end
 
+  defp cast_value("", %{} = type), do: cast_value(%{}, type)
+  defp cast_value(nil, %{} = type), do: cast_value(%{}, type)
   defp cast_value(nil, _), do: {:ok, nil}
 
   # cast array of custom map
