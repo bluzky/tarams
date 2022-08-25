@@ -14,7 +14,7 @@ Phoenix request params validation library.
     - [Define schema](#define-schema)
         - [Default value](#default-value)
         - [Custom cast function](#custom-cast-function)
-            - [1. Custom cast fuction accept value only](#1-custom-cast-fuction-accept-value-only)
+            - [1. Custom cast function accept value only](#1-custom-cast-fuction-accept-value-only)
             - [2. Custom cast function accept value and current object](#2-custom-cast-function-accept-value-and-current-object)
             - [3.Custom cast function accept tuple {M, f}](#3custom-cast-function-accept-tuple-m-f)
         - [Nested schema](#nested-schema)
@@ -43,7 +43,7 @@ def deps do
     {:tarams, "~> 1.0.0"}
   ]
 end
-``**
+```
 
 ## Usage
 
@@ -54,7 +54,7 @@ end
 @index_params_schema  %{
     keyword: :string,
     status: [type: :string, required: true],
-    group_id: [type: :integer, numer: [greater_than: 0]],
+    group_id: [type: :integer, number: [greater_than: 0]],
     name: [type: :string, from: :another_field]
   }
 
