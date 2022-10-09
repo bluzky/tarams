@@ -35,13 +35,19 @@ defmodule Tarams do
   def cast(data, schema) do
     schema = schema |> Tarams.Schema.expand()
 
-    with {:ok, data} <- cast_data(data, schema),
+    with {:cast, {:ok, data, _}} <- {:cast, cast_data(data, schema)},
          data <- Map.new(data),
-         :ok <- validate_data(data, schema),
-         {:ok, data} <- transform_data(data, schema) do
+         {:ok, _, _} <- validate_data(data, schema),
+         {:ok, data, _} <- transform_data(data, schema) do
       {:ok, Map.new(data)}
     else
-      {:error, errors} -> {:error, Map.new(errors)}
+      {:cast, {_, data, errors}} ->
+        # validate casted valid data for full error report
+        {_, _, v_errors} = validate_data(Map.new(data), schema)
+        {:error, Map.new(v_errors ++ errors)}
+
+      {:error, _, errors} ->
+        {:error, Map.new(errors)}
     end
   end
 
@@ -62,10 +68,6 @@ defmodule Tarams do
     schema
     |> Enum.map(&validate_field(data, &1))
     |> collect_schema_result()
-    |> case do
-      {:error, errors} -> {:error, Map.new(errors)}
-      _ -> :ok
-    end
   end
 
   defp transform_data(data, schema) do
@@ -287,10 +289,9 @@ defmodule Tarams do
   end
 
   defp collect_schema_result(results) do
-    Enum.reduce(results, {:ok, []}, fn
-      {:ok, data}, {:ok, acc} -> {:ok, [data | acc]}
-      {:error, error}, {:ok, _} -> {:error, [error]}
-      {:error, error}, {:error, acc} -> {:error, [error | acc]}
+    Enum.reduce(results, {:ok, [], []}, fn
+      {:ok, value}, {status, data, errors} -> {status, [value | data], errors}
+      {:error, {k, v}}, {_, data, errors} -> {:error, [{k, nil} | data], [{k, v} | errors]}
       _, acc -> acc
     end)
   end
