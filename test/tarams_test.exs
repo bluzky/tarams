@@ -288,6 +288,7 @@ defmodule ParamTest do
       assert {:ok, %{user: %{email: nil}}} = Tarams.cast(data, @schema)
     end
 
+    @tag :only
     test "cast embed validation invalid should error" do
       data = %{
         user: %{
@@ -301,7 +302,6 @@ defmodule ParamTest do
                Tarams.cast(data, @schema)
     end
 
-    @tag :only
     test "cast missing required value should error" do
       data = %{
         user: %{
@@ -383,6 +383,44 @@ defmodule ParamTest do
     test "cast validate required skip if default is set" do
       assert {:ok, %{name: "Dzung"}} =
                Tarams.cast(%{}, %{name: [type: :string, default: "Dzung", required: true]})
+    end
+
+    test "return cast error first" do
+      schema = %{
+        age: [type: :integer, number: [min: 10]],
+        hobbies: [type: {:array, :string}]
+      }
+
+      assert {:error, %{age: ["is invalid"]}} = Tarams.cast(%{"age" => "abc"}, schema)
+    end
+
+    test "return cast error and validation error for field with cast valid" do
+      schema = %{
+        age: [type: :integer, number: [min: 10]],
+        hobbies: [type: {:array, :string}]
+      }
+
+      assert {:error, %{age: ["must be greater than or equal to 10"], hobbies: ["is invalid"]}} =
+               Tarams.cast(%{"age" => "1", hobbies: "bad array"}, schema)
+    end
+
+    test "return cast error and validation error for field with cast valid with nested schema" do
+      schema = %{
+        user: %{
+          age: [type: :integer, number: [min: 10]],
+          hobbies: [type: {:array, :string}]
+        },
+        id: :integer
+      }
+
+      assert {:error,
+              %{
+                user: %{
+                  age: ["must be greater than or equal to 10"],
+                  hobbies: ["is invalid"]
+                },
+                id: ["is invalid"]
+              }} = Tarams.cast(%{user: %{"age" => "1", hobbies: "bad array"}, id: "x"}, schema)
     end
 
     test "validate array item" do
