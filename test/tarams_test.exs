@@ -423,6 +423,21 @@ defmodule ParamTest do
               }} = Tarams.cast(%{user: %{"age" => "1", hobbies: "bad array"}, id: "x"}, schema)
     end
 
+    test "return data invalid when data given for nested schema is not map" do
+      schema = %{nested: %{schema: :string}}
+      cases = [%{nested: []}, %{nested: 1}, %{nested: "string"}]
+
+      Enum.each(cases, fn case ->
+        assert {:error, %{nested: ["is invalid"]}} = Tarams.cast(case, schema)
+      end)
+    end
+
+    test "return error when given map for array type" do
+      schema = %{ids: {:array, :integer}}
+      data = %{ids: %{}}
+      assert {:error, %{ids: ["is invalid"]}} = Tarams.cast(data, schema)
+    end
+
     test "validate array item" do
       assert {:ok, %{id: [1, 2, 3]}} =
                Tarams.cast(%{id: ["1", "2", 3]}, %{
