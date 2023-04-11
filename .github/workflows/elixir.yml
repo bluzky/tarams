@@ -20,6 +20,9 @@ jobs:
     - uses: actions/checkout@v2
     - name: Setup Erlang/OTP with optional Elixir (and mix) and/or rebar3
       uses: erlef/setup-beam@v1.15.3
+      with:
+          otp-version: 25.0
+          elixir-version: 1.14.3
     - name: Restore dependencies cache
       uses: actions/cache@v2
       with:
