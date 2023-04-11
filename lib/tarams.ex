@@ -58,10 +58,14 @@ defmodule Tarams do
     end
   end
 
-  defp cast_data(data, schema) do
+  defp cast_data(data, schema) when is_map(data) do
     schema
     |> Enum.map(&cast_field(data, &1))
     |> collect_schema_result()
+  end
+
+  defp cast_data(_, _) do
+    {:error, "is invalid"}
   end
 
   defp validate_data(data, schema) do
@@ -145,9 +149,11 @@ defmodule Tarams do
   end
 
   # cast nested map
-  defp cast_value(value, %{} = type) do
+  defp cast_value(value, %{} = type) when is_map(value) do
     Type.cast({:embed, __MODULE__, type}, value)
   end
+
+  defp cast_value(_, %{}), do: :error
 
   defp cast_value(value, type) do
     Type.cast(type, value)
