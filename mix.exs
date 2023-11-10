@@ -4,7 +4,7 @@ defmodule Tarams.MixProject do
   def project do
     [
       app: :tarams,
-      version: "1.7.1",
+      version: "1.8.0",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -52,10 +52,10 @@ defmodule Tarams.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:valdi, "~> 0.3"},
+      {:valdi, "~> 0.4"},
       {:ex_doc, "~> 0.27", only: [:dev]},
       {:excoveralls, "~> 0.16", only: :test},
-      {:decimal, "~> 2.0"}
+      {:decimal, "~> 2.1"}
     ]
   end
 end
