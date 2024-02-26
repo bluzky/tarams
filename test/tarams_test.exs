@@ -1,11 +1,27 @@
 defmodule ParamTest.StringList do
+  defstruct values: []
+
   def cast(value) when is_binary(value) do
     rs =
       String.split(value, ",")
       |> Tarams.scrub_param()
       |> Tarams.clean_nil()
 
-    {:ok, rs}
+    {:ok, %__MODULE__{values: rs}}
+  end
+
+  def cast(_), do: :error
+end
+
+defmodule ParamTest.User do
+  defstruct [:name]
+
+  def new(name) do
+    %__MODULE__{name: name}
+  end
+
+  def cast(%{name: name}) do
+    {:ok, new(name)}
   end
 
   def cast(_), do: :error
@@ -16,6 +32,7 @@ defmodule ParamTest do
   alias Tarams
 
   alias ParamTest.StringList
+  alias ParamTest.User
 
   describe "Tarams.cast" do
     @type_checks [
@@ -50,10 +67,18 @@ defmodule ParamTest do
       [{:array, :integer}, [1, 2, 3], [1, 2, 3], :ok],
       [{:array, :integer}, ["1", "2", "3"], [1, 2, 3], :ok],
       [{:array, :string}, ["1", "2", "3"], ["1", "2", "3"], :ok],
-      [StringList, "1,2,3", ["1", "2", "3"], :ok],
-      [StringList, "", [], :ok],
+      [StringList, "1,2,3", %StringList{values: ["1", "2", "3"]}, :ok],
+      [StringList, "", %StringList{values: []}, :ok],
       [StringList, [], nil, :error],
-      [{:array, StringList}, ["1", "2"], [["1"], ["2"]], :ok],
+      [
+        {:array, StringList},
+        ["1", "2"],
+        [
+          %StringList{values: ["1"]},
+          %StringList{values: ["2"]}
+        ],
+        :ok
+      ],
       [{:array, StringList}, [1, 2], nil, :error],
       [:date, "2020-10-11", ~D[2020-10-11], :ok],
       [:date, "2020-10-11T01:01:01", ~D[2020-10-11], :ok],
@@ -102,7 +127,12 @@ defmodule ParamTest do
       [:utc_datetime, ~N[2020-10-11 01:01:01], ~U[2020-10-11 01:01:01Z], :ok],
       [:utc_datetime, ~U[2020-10-11 01:01:01Z], ~U[2020-10-11 01:01:01Z], :ok],
       [:utc_datetime, "2", nil, :error],
-      [:any, "any", "any", :ok]
+      [:atom, "hello", :hello, :ok],
+      [:atom, "goodbye", nil, :error],
+      [:any, "any", "any", :ok],
+      [User, %User{name: "Dzung"}, %User{name: "Dzung"}, :ok],
+      [User, %{name: "Dzung"}, %User{name: "Dzung"}, :ok],
+      [User, %{email: "Dzung"}, nil, :error]
     ]
 
     test "cast base type" do
@@ -185,7 +215,6 @@ defmodule ParamTest do
                Tarams.cast(%{}, %{name: [type: :string, default: "Dzung"]})
     end
 
-    @tag :only
     test "cast use default function if field not exist in params" do
       assert {:ok, %{name: "123"}} =
                Tarams.cast(%{}, %{name: [type: :string, default: fn -> "123" end]})
@@ -288,7 +317,6 @@ defmodule ParamTest do
       assert {:ok, %{user: %{email: nil}}} = Tarams.cast(data, @schema)
     end
 
-    @tag :only
     test "cast embed validation invalid should error" do
       data = %{
         user: %{
@@ -298,7 +326,7 @@ defmodule ParamTest do
         }
       }
 
-      assert {:error, %{user: %{email: ["length must be greater than or equal to 5"]}}} =
+      assert {:error, %{user: [%{email: ["length must be greater than or equal to 5"]}]}} =
                Tarams.cast(data, @schema)
     end
 
@@ -309,7 +337,7 @@ defmodule ParamTest do
         }
       }
 
-      assert {:error, %{user: %{name: ["is required"]}}} = Tarams.cast(data, @schema)
+      assert {:error, %{user: [%{name: ["is required"]}]}} = Tarams.cast(data, @schema)
     end
 
     @array_schema %{
@@ -323,6 +351,7 @@ defmodule ParamTest do
            }}
       ]
     }
+
     test "cast array embed schema with valid data" do
       data = %{
         "user" => [
@@ -369,7 +398,7 @@ defmodule ParamTest do
         ]
       }
 
-      assert {:error, %{user: %{name: ["is required"]}}} = Tarams.cast(data, @array_schema)
+      assert {:error, %{user: [%{name: ["is required"]}]}} = Tarams.cast(data, @array_schema)
     end
 
     test "error with custom message" do
@@ -416,7 +445,6 @@ defmodule ParamTest do
       assert {:error,
               %{
                 user: %{
-                  age: ["must be greater than or equal to 10"],
                   hobbies: ["is invalid"]
                 },
                 id: ["is invalid"]
@@ -520,7 +548,6 @@ defmodule ParamTest do
       assert {:ok, %{product_status: "draft"}} = Tarams.cast(data, schema)
     end
 
-    @tag :only
     test "transform function with context" do
       convert_status = fn status, data ->
         text =

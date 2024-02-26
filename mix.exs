@@ -52,7 +52,7 @@ defmodule Tarams.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:valdi, "~> 0.4"},
+      {:valdi, "~> 0.5"},
       {:ex_doc, "~> 0.27", only: [:dev]},
       {:excoveralls, "~> 0.16", only: :test},
       {:decimal, "~> 2.1"}

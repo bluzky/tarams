@@ -204,6 +204,12 @@ defmodule Tarams.Schema do
   ```
   """
 
+  defmacro __using__(_) do
+    quote do
+      import Tarams.DefSchema
+    end
+  end
+
   @doc """
   Expand short-hand type syntax to full syntax
 
