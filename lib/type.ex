@@ -19,6 +19,7 @@ defmodule Tarams.Type do
     end
   end
 
+  defp cast_fun(:atom), do: &cast_atom/1
   defp cast_fun(:boolean), do: &cast_boolean/1
   defp cast_fun(:integer), do: &cast_integer/1
   defp cast_fun(:float), do: &cast_float/1
@@ -72,6 +73,14 @@ defmodule Tarams.Type do
   end
 
   defp cast_decimal(term), do: same_decimal(term)
+
+  defp cast_atom(term) when is_atom(term), do: {:ok, term}
+
+  defp cast_atom(term) when is_binary(term) do
+    {:ok, String.to_existing_atom(term)}
+  rescue
+    ArgumentError -> :error
+  end
 
   defp cast_boolean(term) when term in ~w(true 1), do: {:ok, true}
   defp cast_boolean(term) when term in ~w(false 0), do: {:ok, false}
@@ -232,12 +241,18 @@ defmodule Tarams.Type do
   defp cast_map(term) when is_map(term), do: {:ok, term}
   defp cast_map(_), do: :error
 
-  defp maybe_cast_custom_type(_mod, %_schema{} = value) do
+  # value is already a custom type, return it
+  defp maybe_cast_custom_type(mod, %mod{} = value) do
     {:ok, value}
   end
 
+  # if custom type provide cast function, use it
   defp maybe_cast_custom_type(mod, value) do
-    mod.cast(value)
+    if function_exported?(mod, :cast, 1) do
+      mod.cast(value)
+    else
+      :error
+    end
   end
 
   defp array(term, _, _, _) when not is_list(term) do
